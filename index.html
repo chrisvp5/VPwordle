@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Wordle Clone</title>
+  <title>VP Wordle</title>
   <style>
     :root{
       --bg:#0f1115;
@@ -92,10 +92,34 @@
 
 <script>
 (() => {
+  "use strict";
 
-  // ---------- WORD LIST LOADING (BULLETPROOF FOR GITHUB PAGES) ----------
+  // -------------------- PRIVATE GAME DATA (NOT EXPOSED) --------------------
   let solutions = [];
   let validGuesses = new Set();
+
+  // Answer is private to this closure and never attached to window.
+  let _answer = "";
+  const setAnswer = (w) => { _answer = w; };
+
+  // -------------------- DOM --------------------
+  const boardEl = document.getElementById("board");
+  const statusEl = document.getElementById("status");
+  const keyboardEl = document.getElementById("keyboard");
+  const restartBtn = document.getElementById("restartBtn");
+
+  // -------------------- STATE --------------------
+  let currentRow = 0;
+  let currentCol = 0;
+  let isGameOver = false;
+  const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
+  const keyState = {}; // unknown | grey | yellow | green
+
+  // -------------------- HELPERS --------------------
+  function setStatus(msg, solid=false) {
+    statusEl.textContent = msg;
+    statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
+  }
 
   async function loadWordLists() {
     try {
@@ -104,7 +128,7 @@
       const solURL = new URL("solutions.txt", base);
       const guessURL = new URL("guesses.txt", base);
 
-      // cache buster
+      // cache busting so GH Pages can't serve old files
       solURL.searchParams.set("v", Date.now());
       guessURL.searchParams.set("v", Date.now());
 
@@ -113,8 +137,8 @@
         fetch(guessURL)
       ]);
 
-      if (!solRes.ok) throw new Error("Could not load solutions.txt from " + solURL);
-      if (!guessRes.ok) throw new Error("Could not load guesses.txt from " + guessURL);
+      if (!solRes.ok) throw new Error("solutions.txt not reachable");
+      if (!guessRes.ok) throw new Error("guesses.txt not reachable");
 
       const solText = await solRes.text();
       const guessText = await guessRes.text();
@@ -131,17 +155,16 @@
 
       validGuesses = new Set([...solutions, ...guessesArr]);
 
-      setStatus(`Loaded ${solutions.length} solutions & ${guessesArr.length} guesses.`);
-      console.log("solutions loaded:", solutions.length);
-      console.log("guesses loaded:", guessesArr.length);
-
+      setStatus(""); // clear loading message
     } catch (err) {
-      console.error(err);
-      setStatus("Word lists failed to load: " + err.message, true);
+      setStatus(
+        "Word lists failed to load. Check solutions.txt and guesses.txt are reachable.",
+        true
+      );
+      throw err;
     }
   }
 
-  // ---------- DAILY WORD ----------
   function getDailyIndex() {
     const start = new Date("2021-06-19T00:00:00Z");
     const now = new Date();
@@ -151,7 +174,6 @@
     return Math.floor((utcToday - start) / (1000*60*60*24));
   }
 
-  // ---------- CHALLENGE LINK ----------
   function getAnswerFromURL() {
     const params = new URLSearchParams(window.location.search);
     const w = (params.get("word") || "").toLowerCase();
@@ -159,35 +181,17 @@
     return null;
   }
 
-  // ---------- GAME STATE ----------
-  let answer = "";
-  let currentRow = 0;
-  let currentCol = 0;
-  let isGameOver = false;
-  const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
-  const keyState = {};
-
-  const boardEl = document.getElementById("board");
-  const statusEl = document.getElementById("status");
-  const keyboardEl = document.getElementById("keyboard");
-  const restartBtn = document.getElementById("restartBtn");
-
   function pickAnswer() {
     const forced = getAnswerFromURL();
     if (forced && validGuesses.has(forced)) {
-      answer = forced;
-    } else {
-      answer = solutions[getDailyIndex() % solutions.length];
+      setAnswer(forced);
+      return;
     }
-    console.log("Answer:", answer);
+    const idx = getDailyIndex() % solutions.length;
+    setAnswer(solutions[idx]);
   }
 
-  // ---------- UI SETUP ----------
-  function setStatus(msg, solid=false) {
-    statusEl.textContent = msg;
-    statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
-  }
-
+  // -------------------- UI BUILD --------------------
   function buildBoard() {
     boardEl.innerHTML = "";
     for (let r = 0; r < 6; r++) {
@@ -227,7 +231,6 @@
     });
   }
 
-  // ---------- TILE & KEY UPDATES ----------
   function updateTile(r, c, letter) {
     const tile = document.getElementById(`tile-${r}-${c}`);
     tile.textContent = letter;
@@ -261,8 +264,9 @@
     });
   }
 
-  // ---------- SCORING ----------
-  function scoreGuess(guess, answer) {
+  // -------------------- SCORING (USES PRIVATE _answer) --------------------
+  function scoreGuess(guess) {
+    const answer = _answer; // private
     const result = Array(5).fill("grey");
     const a = answer.split("");
     const g = guess.split("");
@@ -285,7 +289,7 @@
     return result;
   }
 
-  // ---------- INPUT ----------
+  // -------------------- INPUT --------------------
   function handleKey(key) {
     if (isGameOver) return;
 
@@ -294,7 +298,7 @@
       if (guess.length < 5) return setStatus("Not enough letters.");
       if (!validGuesses.has(guess)) return setStatus("Not in word list.");
 
-      const colours = scoreGuess(guess, answer);
+      const colours = scoreGuess(guess);
       paintRow(currentRow, colours);
 
       for (let i = 0; i < 5; i++) {
@@ -302,9 +306,9 @@
       }
       repaintKeyboard();
 
-      if (guess === answer) {
+      if (guess === _answer) {
         isGameOver = true;
-        return setStatus(`You got it. The word was ${answer.toUpperCase()}.`, true);
+        return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
       }
 
       currentRow++;
@@ -312,7 +316,7 @@
 
       if (currentRow === 6) {
         isGameOver = true;
-        return setStatus(`Out of guesses. The word was ${answer.toUpperCase()}.`, true);
+        return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
       }
 
       setStatus("");
@@ -337,19 +341,18 @@
     }
   }
 
-  window.onkeydown = (e) => {
+  window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
     if (k === "enter" || k === "backspace" || /^[a-z]$/.test(k)) {
       handleKey(k);
     }
-  };
+  });
 
-  // ---------- RESET ----------
+  // -------------------- RESET --------------------
   async function resetGame() {
     setStatus("Loading word lists...");
     await loadWordLists();
 
-    // guard: stop if lists failed
     if (solutions.length === 0 || validGuesses.size === 0) return;
 
     guesses.forEach(r => r.fill(""));
