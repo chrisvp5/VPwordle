@@ -276,6 +276,44 @@
             detectSessionInUrl: true   // ✅ THIS is the key fix
           }
         });
+        // ✅ Force-consume magic link tokens from URL hash (GitHub Pages safe)
+async function consumeHashSessionIfPresent() {
+  if (!supabase) return false;
+
+  const rawHash = window.location.hash || "";
+  if (!rawHash.includes("access_token") || !rawHash.includes("refresh_token")) {
+    return false;
+  }
+
+  const hash = rawHash.replace(/^#/, "");
+  const params = new URLSearchParams(hash);
+
+  const access_token = params.get("access_token");
+  const refresh_token = params.get("refresh_token");
+
+  if (!access_token || !refresh_token) return false;
+
+  const { data, error } = await supabase.auth.setSession({
+    access_token,
+    refresh_token
+  });
+
+  if (error) {
+    console.error("setSession failed:", error);
+    setStatus("Login failed. Please try again.", true);
+    return false;
+  }
+
+  if (data?.session?.user) {
+    setStatus("Logged in successfully.", true);
+
+    // clean URL
+    history.replaceState({}, document.title, window.location.pathname);
+    return true;
+  }
+
+  return false;
+}
       // ✅ Wait for Supabase to process magic link URL, then refresh UI
 async function consumeMagicLinkSessionIfPresent() {
   if (!supabase) return;
@@ -629,8 +667,8 @@ async function consumeMagicLinkSessionIfPresent() {
     });
 
    async function startGame() {
-  // 1) If we came from a magic link, let Supabase consume it first
-  await consumeMagicLinkSessionIfPresent();
+  // 1) If we came from a magic link, force-consume hash tokens first
+  await consumeHashSessionIfPresent();
 
   // 2) Load your word lists + build game
   setStatus("Loading word lists...");
@@ -697,4 +735,5 @@ async function consumeMagicLinkSessionIfPresent() {
   </script>
 </body>
 </html>
+
 
