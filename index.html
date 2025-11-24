@@ -191,6 +191,72 @@
     setAnswer(solutions[idx]);
   }
 
+  // -------------------- PERSISTENCE (LOCALSTORAGE) --------------------
+  function getPuzzleId() {
+    return getDailyIndex(); // ties save to today's daily puzzle
+  }
+
+  function saveState() {
+    const state = {
+      puzzleId: getPuzzleId(),
+      guesses,
+      currentRow,
+      currentCol,
+      isGameOver,
+      keyState
+    };
+    localStorage.setItem("vpwordle_state", JSON.stringify(state));
+  }
+
+  function loadState() {
+    const raw = localStorage.getItem("vpwordle_state");
+    if (!raw) return false;
+
+    try {
+      const state = JSON.parse(raw);
+
+      if (state.puzzleId !== getPuzzleId()) {
+        localStorage.removeItem("vpwordle_state");
+        return false;
+      }
+
+      for (let r = 0; r < 6; r++) {
+        for (let c = 0; c < 5; c++) {
+          guesses[r][c] = state.guesses?.[r]?.[c] || "";
+        }
+      }
+
+      currentRow = state.currentRow || 0;
+      currentCol = state.currentCol || 0;
+      isGameOver = !!state.isGameOver;
+
+      for (const k in keyState) delete keyState[k];
+      Object.assign(keyState, state.keyState || {});
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function hasStartedGame() {
+    return guesses.some(row => row.some(ch => ch));
+  }
+
+  function updateRestartLock() {
+    if (hasStartedGame()) {
+      restartBtn.disabled = true;
+      restartBtn.style.opacity = "0.6";
+      restartBtn.style.cursor = "not-allowed";
+      restartBtn.title = "You can't restart today's puzzle.";
+    } else {
+      restartBtn.disabled = false;
+      restartBtn.style.opacity = "1";
+      restartBtn.style.cursor = "pointer";
+      restartBtn.title = "";
+    }
+  }
+
   // -------------------- UI BUILD --------------------
   function buildBoard() {
     boardEl.innerHTML = "";
@@ -306,8 +372,14 @@
       }
       repaintKeyboard();
 
+      // save after a completed guess
+      saveState();
+      updateRestartLock();
+
       if (guess === _answer) {
         isGameOver = true;
+        saveState();
+        updateRestartLock();
         return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
       }
 
@@ -316,6 +388,8 @@
 
       if (currentRow === 6) {
         isGameOver = true;
+        saveState();
+        updateRestartLock();
         return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
       }
 
@@ -355,19 +429,57 @@
 
     if (solutions.length === 0 || validGuesses.size === 0) return;
 
+    // start fresh before restore
     guesses.forEach(r => r.fill(""));
     currentRow = 0;
     currentCol = 0;
     isGameOver = false;
     for (const k in keyState) delete keyState[k];
 
+    // restore if same daily puzzle
+    const restored = loadState();
+
     pickAnswer();
     buildBoard();
     buildKeyboard();
-    repaintKeyboard();
+
+    if (restored) {
+      // repaint tiles text and colours for completed rows
+      for (let r = 0; r < 6; r++) {
+        const guessStr = guesses[r].join("");
+        if (!guessStr) continue;
+
+        for (let c = 0; c < 5; c++) {
+          updateTile(r, c, guesses[r][c]);
+        }
+
+        // only colour rows that were submitted
+        if (r < currentRow) {
+          const colours = scoreGuess(guessStr);
+          paintRow(r, colours);
+        }
+      }
+
+      repaintKeyboard();
+
+      if (isGameOver) {
+        const lastGuess = guesses[currentRow - 1]?.join("") || "";
+        if (lastGuess === _answer) {
+          setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+        } else {
+          setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+        }
+      }
+    }
+
+    updateRestartLock();
   }
 
-  restartBtn.onclick = resetGame;
+  // Restart only if they haven't started today's puzzle
+  restartBtn.onclick = () => {
+    if (hasStartedGame()) return;
+    resetGame();
+  };
 
   resetGame();
 })();
