@@ -353,41 +353,60 @@
       console.error("Supabase init failed:", e);
     }
 
-    // ✅ Manual magic link consumption (works on CDN v2)
-    async function handleMagicLinkLogin() {
-      if (!supabase) return;
+// ✅ Manual magic link consumption (supports BOTH hash-token and code flows)
+async function handleMagicLinkLogin() {
+  if (!supabase) return;
 
-      const hash = (window.location.hash || "").replace(/^#/, "");
-      if (!hash) return;
+  // ---- CASE A: PKCE code in query string ----
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get("code");
 
-      const params = new URLSearchParams(hash);
+  if (code && supabase.auth.exchangeCodeForSession) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
-      const error_description = params.get("error_description");
-
-      if (error_description) {
-        setStatus("Login link error: " + decodeURIComponent(error_description), true);
-        return;
-      }
-
-      if (access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token
-        });
-
-        if (error) {
-          console.error("setSession failed:", error);
-          setStatus("Login failed. Try again.", true);
-          return;
-        }
-
-        setStatus("Logged in successfully.", true);
-        // clean URL
-        history.replaceState({}, document.title, window.location.pathname);
-      }
+    if (error) {
+      console.error("exchangeCodeForSession failed:", error);
+      setStatus("Login failed. Try again.", true);
+      return;
     }
+
+    if (data?.session) {
+      setStatus("Logged in successfully.", true);
+      history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+  }
+
+  // ---- CASE B: access/refresh tokens in URL hash ----
+  const hash = (window.location.hash || "").replace(/^#/, "");
+  if (!hash) return;
+
+  const hashParams = new URLSearchParams(hash);
+  const access_token = hashParams.get("access_token");
+  const refresh_token = hashParams.get("refresh_token");
+  const error_description = hashParams.get("error_description");
+
+  if (error_description) {
+    setStatus("Login link error: " + decodeURIComponent(error_description), true);
+    return;
+  }
+
+  if (access_token && refresh_token) {
+    const { error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token
+    });
+
+    if (error) {
+      console.error("setSession failed:", error);
+      setStatus("Login failed. Try again.", true);
+      return;
+    }
+
+    setStatus("Logged in successfully.", true);
+    history.replaceState({}, document.title, window.location.pathname);
+  }
+}
 
     async function refreshAuthUI() {
       if (!supabase) return;
@@ -418,7 +437,7 @@
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
-            emailRedirectTo: window.location.origin + window.location.pathname
+            emailRedirectTo: "https://chrisvp5.github.io/VPwordle/"
           }
         });
 
@@ -752,3 +771,4 @@
   </script>
 </body>
 </html>
+
