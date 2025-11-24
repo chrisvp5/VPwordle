@@ -424,38 +424,53 @@ async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
 
   // ==================== WORD LISTS ====================
 async function loadWordLists() {
-  const base = window.location.origin + window.location.pathname; 
-  // ^ stable base, ignores query strings / weird fragments
+  // absolute base to your GitHub Pages folder
+  const base = window.location.origin + "/VPwordle/";
 
-  const solURL = new URL("solutions.txt", base);
-  const guessURL = new URL("guesses.txt", base);
+  const solURL = base + "solutions.txt?v=" + Date.now();
+  const guessURL = base + "guesses.txt?v=" + Date.now();
 
-  // cache buster
-  solURL.searchParams.set("v", Date.now());
-  guessURL.searchParams.set("v", Date.now());
+  try {
+    const [solRes, guessRes] = await Promise.all([
+      fetch(solURL, { cache: "no-store" }),
+      fetch(guessURL, { cache: "no-store" })
+    ]);
 
-  const [solRes, guessRes] = await Promise.all([
-    fetch(solURL),
-    fetch(guessURL)
-  ]);
+    if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
+    if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
 
-  if (!solRes.ok) throw new Error("solutions.txt not reachable");
-  if (!guessRes.ok) throw new Error("guesses.txt not reachable");
+    const solText = await solRes.text();
+    const guessText = await guessRes.text();
 
-  const solText = await solRes.text();
-  const guessText = await guessRes.text();
+    solutions = solText
+      .split(/\r?\n/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
 
-  solutions = solText
-    .split(/\r?\n/)
-    .map(w => w.trim().toLowerCase())
-    .filter(w => w.length === 5);
+    const guessesArr = guessText
+      .split(/\r?\n/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
 
-  const guessesArr = guessText
-    .split(/\r?\n/)
-    .map(w => w.trim().toLowerCase())
-    .filter(w => w.length === 5);
+    validGuesses = new Set([...solutions, ...guessesArr]);
 
-  validGuesses = new Set([...solutions, ...guessesArr]);
+    if (solutions.length === 0 || validGuesses.size === 0) {
+      throw new Error("Word lists loaded but were empty.");
+    }
+
+  } catch (err) {
+    // ✅ FALLBACK LIST so the game still loads
+    console.error("Word list load failed:", err);
+
+    solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
+    validGuesses = new Set(solutions);
+
+    setStatus(
+      "Could not load solutions.txt / guesses.txt from GitHub Pages, using fallback list. " +
+      "Check file paths and that GitHub Pages is serving the txt files.",
+      true
+    );
+  }
 }
 
   function getDailyIndex() {
@@ -751,6 +766,7 @@ async function loadWordLists() {
 </script>
 </body>
 </html>
+
 
 
 
