@@ -83,10 +83,11 @@
       align-items:center;
       justify-content:center;
       margin-top:2px;
+      flex-wrap:wrap;
     }
     .auth-panel input{
       flex:1;
-      min-width:140px;
+      min-width:180px;
       padding:8px 10px;
       border-radius:8px;
       border:1px solid #333845;
@@ -123,30 +124,17 @@
       cursor: wait;
       transform: scale(0.98);
     }
-    .auth-btn .btn-text{
-      transition: opacity .15s ease;
-    }
-    .auth-btn.loading .btn-text{
-      opacity:0.75;
-    }
+    .auth-btn .btn-text{ transition: opacity .15s ease; }
+    .auth-btn.loading .btn-text{ opacity:0.75; }
     .spinner{
-      width:16px;
-      height:16px;
-      border-radius:50%;
+      width:16px; height:16px; border-radius:50%;
       border:2px solid rgba(255,255,255,0.25);
       border-top-color: rgba(255,255,255,0.9);
-      display:none;
-      animation: spin .8s linear infinite;
+      display:none; animation: spin .8s linear infinite;
     }
-    .auth-btn.loading .spinner{
-      display:inline-block;
-    }
-    @keyframes spin{
-      to { transform: rotate(360deg); }
-    }
-    .auth-btn.success{
-      animation: pulse .6s ease;
-    }
+    .auth-btn.loading .spinner{ display:inline-block; }
+    @keyframes spin{ to { transform: rotate(360deg); } }
+    .auth-btn.success{ animation: pulse .6s ease; }
     @keyframes pulse{
       0%{ transform:scale(1); }
       50%{ transform:scale(1.06); }
@@ -155,87 +143,45 @@
 
     /* ===== VP LOADER ===== */
     .vp-loader{
-      position:fixed;
-      inset:0;
+      position:fixed; inset:0;
       background: radial-gradient(ellipse at center, #141824 0%, #0b0d12 60%, #05060a 100%);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
-      opacity:1;
-      transition: opacity 700ms ease;
+      display:flex; align-items:center; justify-content:center;
+      z-index:9999; opacity:1; transition: opacity 700ms ease;
     }
-    .vp-loader.hide{
-      opacity:0;
-      pointer-events:none;
-    }
+    .vp-loader.hide{ opacity:0; pointer-events:none; }
     .vp-loader-inner{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:12px;
+      display:flex; flex-direction:column; align-items:center; gap:12px;
       transform: translateY(-10px);
     }
     .vp-loader-img{
-      width:140px;
-      height:140px;
-      border-radius:50%;
-      object-fit:cover;
+      width:140px; height:140px; border-radius:50%; object-fit:cover;
       border:3px solid rgba(255,255,255,0.08);
       box-shadow: 0 0 40px rgba(47,191,113,0.18);
       animation: vpSpin 2.8s linear infinite, vpFloat 1.6s ease-in-out infinite;
     }
     .vp-loader-title{
-      font-size:32px;
-      font-weight:900;
-      letter-spacing:3px;
-      text-transform:uppercase;
+      font-size:32px; font-weight:900; letter-spacing:3px; text-transform:uppercase;
       background: linear-gradient(90deg, #ffffff, #9ad7ff, #ffffff);
-      -webkit-background-clip:text;
-      background-clip:text;
-      color:transparent;
+      -webkit-background-clip:text; background-clip:text; color:transparent;
       animation: vpGlow 1.8s ease-in-out infinite;
     }
     .vp-loader-sub{
-      font-size:14px;
-      color:#9aa1b2;
-      letter-spacing:1px;
-      text-transform:uppercase;
+      font-size:14px; color:#9aa1b2; letter-spacing:1px; text-transform:uppercase;
     }
-    .dots span{
-      display:inline-block;
-      animation: dotBounce 1.1s infinite;
-    }
+    .dots span{ display:inline-block; animation: dotBounce 1.1s infinite; }
     .dots span:nth-child(2){ animation-delay: .15s; }
     .dots span:nth-child(3){ animation-delay: .30s; }
 
     @keyframes vpSpin{ to{ transform: rotate(360deg); } }
-    @keyframes vpFloat{
-      0%,100%{ transform: translateY(0); }
-      50%{ transform: translateY(-6px); }
-    }
-    @keyframes vpGlow{
-      0%,100%{ filter: drop-shadow(0 0 0 rgba(154,215,255,0)); }
-      50%{ filter: drop-shadow(0 0 12px rgba(154,215,255,0.55)); }
-    }
-    @keyframes dotBounce{
-      0%,100%{ transform: translateY(0); opacity:.4; }
-      50%{ transform: translateY(-4px); opacity:1; }
-    }
+    @keyframes vpFloat{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-6px); } }
+    @keyframes vpGlow{ 0%,100%{ filter:none; } 50%{ filter: drop-shadow(0 0 12px rgba(154,215,255,0.55)); } }
+    @keyframes dotBounce{ 0%,100%{ transform: translateY(0); opacity:.4; } 50%{ transform: translateY(-4px); opacity:1; } }
 
-    /* Hide game until loader finishes */
     .game-wrapper{
-      opacity:0;
-      transition: opacity 600ms ease;
-      width:100%;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:12px;
+      opacity:0; transition: opacity 600ms ease; width:100%;
+      display:flex; flex-direction:column; align-items:center; gap:12px;
     }
-    .game-wrapper.show{
-      opacity:1;
-    }
+    .game-wrapper.show{ opacity:1; }
   </style>
 </head>
 <body>
@@ -250,13 +196,11 @@
       />
       <div class="vp-loader-title">VP WORDLE</div>
       <div class="vp-loader-sub">
-        Loading
-        <span class="dots"><span>.</span><span>.</span><span>.</span></span>
+        Loading <span class="dots"><span>.</span><span>.</span><span>.</span></span>
       </div>
     </div>
   </div>
 
-  <!-- Wrap the game so we can fade it in -->
   <div id="gameWrapper" class="game-wrapper">
     <h1>WORDLE</h1>
     <div class="sub">Guess the 5 letter word. You have 6 tries.</div>
@@ -264,7 +208,6 @@
     <div id="board" class="board"></div>
     <div id="status" class="status"></div>
 
-    <!-- Supabase login -->
     <div class="auth-panel" id="authBox">
       <input id="emailInput" type="email" placeholder="Enter email to login" />
       <button id="loginBtn" class="auth-btn">
@@ -282,513 +225,487 @@
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
-(() => {
-  "use strict";
+  <script>
+  (() => {
+    "use strict";
 
-  /* ======================
-     STATUS + ERROR SURFACE
-  ====================== */
-  const statusEl = document.getElementById("status");
-  function setStatus(msg, solid=false) {
-    statusEl.textContent = msg;
-    statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
-  }
-  window.addEventListener("error", (e) => {
-    setStatus("JS error: " + e.message, true);
-    console.error(e);
-  });
-  window.addEventListener("unhandledrejection", (e) => {
-    const msg = e.reason?.message || String(e.reason);
-    setStatus("Async error: " + msg, true);
-    console.error(e);
-  });
-
-  /* ======================
-     LOADER (FAIL SAFE)
-  ====================== */
-  const vpLoader = document.getElementById("vpLoader");
-  const gameWrapper = document.getElementById("gameWrapper");
-
-  function hideLoader() {
-    if (!vpLoader) return;
-    vpLoader.classList.add("hide");
-    gameWrapper.classList.add("show");
-    setTimeout(() => vpLoader.remove(), 800);
-  }
-
-  // If anything goes wrong, loader still disappears after 7s
-  const loaderFailSafe = setTimeout(hideLoader, 7000);
-
-  /* ======================
-     SUPABASE SETUP (AUTO MAGIC LINK)
-  ====================== */
-  const SUPABASE_URL = "https://ruenrertnvhyglbwhqpc.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_3jLPUT8TNCr-gJtrA5rPFg_A11cxx2G";
-
-  let supabase = null;
-  const emailInput = document.getElementById("emailInput");
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const authBox = document.getElementById("authBox");
-
-  try {
-    if (window.supabase) {
-      supabase = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY,
-        {
-          auth: {
-            persistSession: true,
-            detectSessionInUrl: true, // ✅ let SDK consume magic link
-            autoRefreshToken: true
-          }
-        }
-      );
-    } else {
-      authBox.style.display = "none";
+    // -------------------- STATUS + ERROR SURFACE --------------------
+    const statusEl = document.getElementById("status");
+    function setStatus(msg, solid=false){
+      if(!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
     }
-  } catch (e) {
-    authBox.style.display = "none";
-    console.error("Supabase init failed:", e);
-  }
 
-  async function refreshAuthUI() {
-    if (!supabase) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      loginBtn.style.display = "none";
-      emailInput.style.display = "none";
-      logoutBtn.style.display = "inline-block";
-      setStatus("Logged in as " + user.email);
-    } else {
-      loginBtn.style.display = "inline-flex";
-      emailInput.style.display = "inline-block";
-      logoutBtn.style.display = "none";
+    window.addEventListener("error", (e) => {
+      setStatus("JS error: " + e.message, true);
+      console.error(e);
+    });
+    window.addEventListener("unhandledrejection", (e) => {
+      const msg = e.reason?.message || String(e.reason);
+      setStatus("Async error: " + msg, true);
+      console.error(e);
+    });
+
+    // -------------------- LOADER --------------------
+    const vpLoader = document.getElementById("vpLoader");
+    const gameWrapper = document.getElementById("gameWrapper");
+    function hideLoader(){
+      if(!vpLoader) return;
+      vpLoader.classList.add("hide");
+      gameWrapper.classList.add("show");
+      setTimeout(()=>vpLoader.remove(), 800);
     }
-  }
+    const returningFromLogin =
+      window.location.hash.includes("access_token") ||
+      window.location.search.includes("code=");
+    setTimeout(hideLoader, returningFromLogin ? 300 : 5500);
 
-  loginBtn.onclick = async () => {
-    if (!supabase) return setStatus("Login not configured yet.");
-    const email = emailInput.value.trim();
-    if (!email) return setStatus("Enter an email to login.");
+    // -------------------- SUPABASE INIT --------------------
+    const SUPABASE_URL = "https://ruenrertnvhyglbwhqpc.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_3jLPUT8TNCr-gJtrA5rPFg_A11cxx2G";
 
-    loginBtn.classList.add("loading");
-    loginBtn.disabled = true;
-    setStatus("Sending magic link...");
+    const emailInput = document.getElementById("emailInput");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const authBox = document.getElementById("authBox");
 
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: "https://chrisvp5.github.io/VPwordle/"
+    let supabase = null;
+    if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY){
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          detectSessionInUrl: false   // we manually consume hash below
         }
       });
+    } else {
+      authBox.style.display = "none";
+      console.warn("Supabase not available, running without login.");
+    }
 
-      if (error) {
-        setStatus("Login error: " + error.message, true);
-        return;
+    async function refreshAuthUI(){
+      if(!supabase) return;
+      const { data:{ user } } = await supabase.auth.getUser();
+      if(user){
+        loginBtn.style.display = "none";
+        emailInput.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        setStatus("Logged in as " + user.email);
+      }else{
+        loginBtn.style.display = "inline-flex";
+        emailInput.style.display = "inline-block";
+        logoutBtn.style.display = "none";
       }
-
-      loginBtn.classList.remove("loading");
-      loginBtn.classList.add("success");
-      setTimeout(() => loginBtn.classList.remove("success"), 700);
-
-      setStatus("Magic link sent. Check your email.");
-    } finally {
-      loginBtn.classList.remove("loading");
-      loginBtn.disabled = false;
     }
-  };
 
-  logoutBtn.onclick = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    refreshAuthUI();
-    setStatus("Logged out.");
-  };
+    // ---- Manual consume for GH Pages magic link (#access_token=...) ----
+    async function consumeHashSessionIfPresent(){
+      if(!supabase) return false;
 
-  if (supabase) supabase.auth.onAuthStateChange(() => refreshAuthUI());
-
-  async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
-    if (!supabase) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    await supabase.from("vpwordle_results").upsert({
-      user_id: user.id,
-      puzzle_id: puzzleId,
-      guesses_used: guessesUsed,
-      won
-    });
-  }
-
-  /* ======================
-     WORDLE DATA + STATE
-  ====================== */
-  let solutions = [];
-  let validGuesses = new Set();
-
-  let _answer = "";
-  const setAnswer = (w) => { _answer = w; };
-
-  const boardEl = document.getElementById("board");
-  const keyboardEl = document.getElementById("keyboard");
-
-  let currentRow = 0;
-  let currentCol = 0;
-  let isGameOver = false;
-  const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
-  const keyState = {}; // unknown | grey | yellow | green
-
-  /* ======================
-     WORD LISTS
-  ====================== */
-  async function loadWordLists() {
-    try {
-      const base = window.location.href;
-      const solURL = new URL("solutions.txt", base);
-      const guessURL = new URL("guesses.txt", base);
-      solURL.searchParams.set("v", Date.now());
-      guessURL.searchParams.set("v", Date.now());
-
-      const [solRes, guessRes] = await Promise.all([
-        fetch(solURL, { cache: "no-store" }),
-        fetch(guessURL, { cache: "no-store" })
-      ]);
-
-      if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
-      if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
-
-      const solText = await solRes.text();
-      const guessText = await guessRes.text();
-
-      solutions = solText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
-      const guessesArr = guessText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
-
-      validGuesses = new Set([...solutions, ...guessesArr]);
-
-      if (!solutions.length) throw new Error("solutions empty");
-    } catch (err) {
-      console.error("Word list load failed:", err);
-      solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
-      validGuesses = new Set(solutions);
-      setStatus("Could not load word lists, using fallback list.", true);
-    }
-  }
-
-  function getDailyIndex() {
-    const start = new Date("2021-06-19T00:00:00Z");
-    const now = new Date();
-    const utcToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    return Math.floor((utcToday - start) / (1000*60*60*24));
-  }
-  const getPuzzleId = () => getDailyIndex();
-
-  function pickAnswer() {
-    const idx = getDailyIndex() % solutions.length;
-    setAnswer(solutions[idx]);
-  }
-
-  /* ======================
-     LOCAL SAVE / RESTORE
-  ====================== */
-  function saveState() {
-    const state = {
-      puzzleId: getPuzzleId(),
-      guesses,
-      currentRow,
-      currentCol,
-      isGameOver,
-      keyState
-    };
-    localStorage.setItem("vpwordle_state", JSON.stringify(state));
-  }
-
-  function loadState() {
-    const raw = localStorage.getItem("vpwordle_state");
-    if (!raw) return false;
-    try {
-      const state = JSON.parse(raw);
-      if (state.puzzleId !== getPuzzleId()) {
-        localStorage.removeItem("vpwordle_state");
+      const rawHash = window.location.hash || "";
+      if(!rawHash.includes("access_token") || !rawHash.includes("refresh_token")){
         return false;
       }
 
-      for (let r = 0; r < 6; r++) {
-        for (let c = 0; c < 5; c++) {
-          guesses[r][c] = state.guesses?.[r]?.[c] || "";
-        }
-      }
-      currentRow = state.currentRow || 0;
-      currentCol = state.currentCol || 0;
-      isGameOver = !!state.isGameOver;
+      const params = new URLSearchParams(rawHash.replace(/^#/, ""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const error_description = params.get("error_description");
 
-      for (const k in keyState) delete keyState[k];
-      Object.assign(keyState, state.keyState || {});
-      return true;
-    } catch {
+      if(error_description){
+        setStatus("Login link error: " + decodeURIComponent(error_description), true);
+        return false;
+      }
+      if(!access_token || !refresh_token) return false;
+
+      const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if(error){
+        console.error("setSession failed:", error);
+        setStatus("Login failed. Try again.", true);
+        return false;
+      }
+
+      if(data?.session?.user){
+        history.replaceState({}, document.title, window.location.pathname);
+        await refreshAuthUI();
+        setStatus("Logged in successfully.", true);
+        return true;
+      }
       return false;
     }
-  }
 
-  /* ======================
-     UI BUILD
-  ====================== */
-  function buildBoard() {
-    boardEl.innerHTML = "";
-    for (let r = 0; r < 6; r++) {
-      const row = document.createElement("div");
-      row.className = "row";
-      for (let c = 0; c < 5; c++) {
-        const tile = document.createElement("div");
-        tile.className = "tile";
-        tile.id = `tile-${r}-${c}`;
-        row.appendChild(tile);
-      }
-      boardEl.appendChild(row);
+    // ---- Login button ----
+    if(loginBtn){
+      loginBtn.onclick = async ()=>{
+        if(!supabase) return setStatus("Login not configured yet.");
+
+        const email = emailInput.value.trim();
+        if(!email) return setStatus("Enter an email to login.");
+
+        loginBtn.classList.add("loading");
+        loginBtn.disabled = true;
+        setStatus("Sending magic link...");
+
+        try{
+          const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options:{
+              emailRedirectTo: "https://chrisvp5.github.io/VPwordle/"
+            }
+          });
+          if(error){
+            setStatus("Login error: " + error.message, true);
+            return;
+          }
+
+          loginBtn.classList.remove("loading");
+          loginBtn.classList.add("success");
+          setTimeout(()=>loginBtn.classList.remove("success"), 700);
+          setStatus("Magic link sent. Check your email.");
+        } finally {
+          loginBtn.classList.remove("loading");
+          loginBtn.disabled = false;
+        }
+      };
     }
-  }
 
-  const KEY_LAYOUT = [
-    ["q","w","e","r","t","y","u","i","o","p"],
-    ["a","s","d","f","g","h","j","k","l"],
-    ["enter","z","x","c","v","b","n","m","backspace"]
-  ];
+    if(logoutBtn){
+      logoutBtn.onclick = async ()=>{
+        if(!supabase) return;
+        await supabase.auth.signOut();
+        await refreshAuthUI();
+        setStatus("Logged out.");
+      };
+    }
 
-  function buildKeyboard() {
-    keyboardEl.innerHTML = "";
-    KEY_LAYOUT.forEach(rowKeys => {
-      const row = document.createElement("div");
-      row.className = "keyrow";
-      rowKeys.forEach(k => {
-        const btn = document.createElement("button");
-        btn.className = "key";
-        btn.dataset.key = k;
-        btn.textContent = k === "backspace" ? "⌫" : k;
-        if (k === "enter" || k === "backspace") btn.classList.add("wide");
-        btn.onclick = () => handleKey(k);
-        row.appendChild(btn);
+    if(supabase){
+      supabase.auth.onAuthStateChange(() => refreshAuthUI());
+    }
+
+    async function saveResultToSupabase({ puzzleId, guessesUsed, won }){
+      if(!supabase) return;
+      const { data:{ user } } = await supabase.auth.getUser();
+      if(!user) return;
+
+      await supabase.from("vpwordle_results").upsert({
+        user_id: user.id,
+        puzzle_id: puzzleId,
+        guesses_used: guessesUsed,
+        won
       });
-      keyboardEl.appendChild(row);
-    });
-  }
-
-  function updateTile(r, c, letter) {
-    const tile = document.getElementById(`tile-${r}-${c}`);
-    tile.textContent = letter;
-    if (letter) {
-      tile.classList.add("pop");
-      setTimeout(() => tile.classList.remove("pop"), 90);
-    }
-  }
-
-  function paintRow(r, colours) {
-    for (let c = 0; c < 5; c++) {
-      document.getElementById(`tile-${r}-${c}`).classList.add(colours[c]);
-    }
-  }
-
-  function upgradeKeyState(letter, newState) {
-    const rank = { unknown:0, grey:1, yellow:2, green:3 };
-    const old = keyState[letter] || "unknown";
-    if (rank[newState] > rank[old]) keyState[letter] = newState;
-  }
-
-  function repaintKeyboard() {
-    document.querySelectorAll("button.key").forEach(btn => {
-      const k = btn.dataset.key;
-      btn.classList.remove("green", "yellow", "grey", "disabled");
-      if (k.length === 1) {
-        const st = keyState[k] || "unknown";
-        if (st !== "unknown") btn.classList.add(st);
-        if (st === "grey") btn.classList.add("disabled");
-      }
-    });
-  }
-
-  /* ======================
-     SCORING
-  ====================== */
-  function scoreGuess(guess) {
-    const answer = _answer;
-    const result = Array(5).fill("grey");
-    const a = answer.split("");
-    const g = guess.split("");
-
-    // greens
-    for (let i = 0; i < 5; i++) {
-      if (g[i] === a[i]) {
-        result[i] = "green";
-        a[i] = null;
-        g[i] = null;
-      }
-    }
-    // yellows
-    for (let i = 0; i < 5; i++) {
-      if (g[i] && a.includes(g[i])) {
-        result[i] = "yellow";
-        a[a.indexOf(g[i])] = null;
-      }
-    }
-    return result;
-  }
-
-  /* ======================
-     INPUT
-  ====================== */
-  function handleKey(key) {
-    if (isGameOver) return;
-
-    if (key === "enter") {
-      const guess = guesses[currentRow].join("");
-      if (guess.length < 5) return setStatus("Not enough letters.");
-      if (!validGuesses.has(guess)) return setStatus("Not in word list.");
-
-      const colours = scoreGuess(guess);
-      paintRow(currentRow, colours);
-
-      for (let i = 0; i < 5; i++) upgradeKeyState(guess[i], colours[i]);
-      repaintKeyboard();
-
-      saveState();
-
-      if (guess === _answer) {
-        isGameOver = true;
-        saveState();
-        saveResultToSupabase({ puzzleId: getPuzzleId(), guessesUsed: currentRow + 1, won: true });
-        return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
-      }
-
-      currentRow++;
-      currentCol = 0;
-
-      if (currentRow === 6) {
-        isGameOver = true;
-        saveState();
-        saveResultToSupabase({ puzzleId: getPuzzleId(), guessesUsed: 6, won: false });
-        return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
-      }
-
-      setStatus("");
-      return;
     }
 
-    if (key === "backspace") {
-      if (currentCol > 0) {
-        currentCol--;
-        guesses[currentRow][currentCol] = "";
-        updateTile(currentRow, currentCol, "");
-        saveState();
+    // -------------------- PRIVATE GAME DATA --------------------
+    let solutions = [];
+    let validGuesses = new Set();
+    let _answer = "";           // private in closure
+    const setAnswer = (w) => { _answer = w; };
+
+    const boardEl = document.getElementById("board");
+    const keyboardEl = document.getElementById("keyboard");
+
+    let currentRow = 0;
+    let currentCol = 0;
+    let isGameOver = false;
+    const guesses = Array.from({length:6}, ()=>Array(5).fill(""));
+    const keyState = {}; // unknown | grey | yellow | green
+
+    // -------------------- WORD LISTS --------------------
+    async function loadWordLists(){
+      try{
+        const base = window.location.href;
+        const solURL = new URL("solutions.txt", base);
+        const guessURL = new URL("guesses.txt", base);
+        solURL.searchParams.set("v", Date.now());
+        guessURL.searchParams.set("v", Date.now());
+
+        const [solRes, guessRes] = await Promise.all([
+          fetch(solURL, {cache:"no-store"}),
+          fetch(guessURL, {cache:"no-store"})
+        ]);
+
+        if(!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
+        if(!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
+
+        const solText = await solRes.text();
+        const guessText = await guessRes.text();
+
+        solutions = solText.split(/\r?\n/).map(w=>w.trim().toLowerCase()).filter(w=>w.length===5);
+        const guessesArr = guessText.split(/\r?\n/).map(w=>w.trim().toLowerCase()).filter(w=>w.length===5);
+
+        validGuesses = new Set([...solutions, ...guessesArr]);
+
+        if(!solutions.length || !validGuesses.size){
+          throw new Error("Word lists loaded empty.");
+        }
+      } catch(err){
+        console.error("Word list load failed:", err);
+        solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
+        validGuesses = new Set(solutions);
+        setStatus("Could not load word lists, using fallback list.", true);
       }
-      return;
     }
 
-    if (/^[a-z]$/.test(key)) {
-      if (currentCol < 5) {
-        guesses[currentRow][currentCol] = key;
-        updateTile(currentRow, currentCol, key);
-        currentCol++;
-        saveState();
+    function getDailyIndex(){
+      const start = new Date("2021-06-19T00:00:00Z");
+      const now = new Date();
+      const utcToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      return Math.floor((utcToday - start) / (1000*60*60*24));
+    }
+    const getPuzzleId = () => getDailyIndex();
+
+    function pickAnswer(){
+      const idx = getDailyIndex() % solutions.length;
+      setAnswer(solutions[idx]);
+    }
+
+    // -------------------- LOCAL SAVE / RESTORE --------------------
+    function saveState(){
+      localStorage.setItem("vpwordle_state", JSON.stringify({
+        puzzleId:getPuzzleId(), guesses, currentRow, currentCol, isGameOver, keyState
+      }));
+    }
+
+    function loadState(){
+      const raw = localStorage.getItem("vpwordle_state");
+      if(!raw) return false;
+      try{
+        const state = JSON.parse(raw);
+        if(state.puzzleId !== getPuzzleId()){
+          localStorage.removeItem("vpwordle_state");
+          return false;
+        }
+        for(let r=0;r<6;r++){
+          for(let c=0;c<5;c++){
+            guesses[r][c] = state.guesses?.[r]?.[c] || "";
+          }
+        }
+        currentRow = state.currentRow || 0;
+        currentCol = state.currentCol || 0;
+        isGameOver = !!state.isGameOver;
+        for(const k in keyState) delete keyState[k];
+        Object.assign(keyState, state.keyState || {});
+        return true;
+      } catch {
+        return false;
       }
     }
-  }
 
-  window.addEventListener("keydown", (e) => {
-    if (typeof e.key !== "string") return;
-    const k = e.key.toLowerCase();
-    if (k === "enter" || k === "backspace" || /^[a-z]$/.test(k)) handleKey(k);
-  });
+    // -------------------- UI BUILD --------------------
+    function buildBoard(){
+      boardEl.innerHTML = "";
+      for(let r=0;r<6;r++){
+        const row = document.createElement("div");
+        row.className = "row";
+        for(let c=0;c<5;c++){
+          const tile = document.createElement("div");
+          tile.className = "tile";
+          tile.id = `tile-${r}-${c}`;
+          row.appendChild(tile);
+        }
+        boardEl.appendChild(row);
+      }
+    }
 
-  /* ======================
-     GAME START
-  ====================== */
-  async function startGame(){
-    setStatus("Loading word lists...");
-    await loadWordLists();
+    const KEY_LAYOUT = [
+      ["q","w","e","r","t","y","u","i","o","p"],
+      ["a","s","d","f","g","h","j","k","l"],
+      ["enter","z","x","c","v","b","n","m","backspace"]
+    ];
 
-    pickAnswer();
-    buildBoard();
-    buildKeyboard();
+    function buildKeyboard(){
+      keyboardEl.innerHTML = "";
+      KEY_LAYOUT.forEach(rowKeys=>{
+        const row = document.createElement("div");
+        row.className = "keyrow";
+        rowKeys.forEach(k=>{
+          const btn = document.createElement("button");
+          btn.className = "key";
+          btn.dataset.key = k;
+          btn.textContent = (k==="backspace") ? "⌫" : k;
+          if(k==="enter"||k==="backspace") btn.classList.add("wide");
+          btn.onclick = () => handleKey(k);
+          row.appendChild(btn);
+        });
+        keyboardEl.appendChild(row);
+      });
+    }
 
-    const restored = loadState();
+    function updateTile(r,c,letter){
+      const tile = document.getElementById(`tile-${r}-${c}`);
+      tile.textContent = letter;
+      if(letter){
+        tile.classList.add("pop");
+        setTimeout(()=>tile.classList.remove("pop"), 90);
+      }
+    }
 
-    if (restored) {
-      for (let r = 0; r < 6; r++) {
-        const guessStr = guesses[r].join("");
-        if (!guessStr) continue;
+    function paintRow(r,colours){
+      for(let c=0;c<5;c++){
+        document.getElementById(`tile-${r}-${c}`).classList.add(colours[c]);
+      }
+    }
 
-        for (let c = 0; c < 5; c++) updateTile(r, c, guesses[r][c]);
+    function upgradeKeyState(letter,newState){
+      const rank={unknown:0,grey:1,yellow:2,green:3};
+      const old=keyState[letter]||"unknown";
+      if(rank[newState]>rank[old]) keyState[letter]=newState;
+    }
 
-        if (r < currentRow) {
-          const colours = scoreGuess(guessStr);
-          paintRow(r, colours);
-          for (let i = 0; i < 5; i++) upgradeKeyState(guessStr[i], colours[i]);
+    function repaintKeyboard(){
+      document.querySelectorAll("button.key").forEach(btn=>{
+        const k=btn.dataset.key;
+        btn.classList.remove("green","yellow","grey","disabled");
+        if(k.length===1){
+          const st=keyState[k]||"unknown";
+          if(st!=="unknown") btn.classList.add(st);
+          if(st==="grey") btn.classList.add("disabled");
+        }
+      });
+    }
+
+    // -------------------- SCORING --------------------
+    function scoreGuess(guess){
+      const answer=_answer;
+      const result=Array(5).fill("grey");
+      const a=answer.split("");
+      const g=guess.split("");
+
+      // greens
+      for(let i=0;i<5;i++){
+        if(g[i]===a[i]){
+          result[i]="green";
+          a[i]=null; g[i]=null;
         }
       }
-      repaintKeyboard();
+      // yellows
+      for(let i=0;i<5;i++){
+        if(g[i] && a.includes(g[i])){
+          result[i]="yellow";
+          a[a.indexOf(g[i])]=null;
+        }
+      }
+      return result;
+    }
 
-      if (isGameOver) {
-        const lastGuess = guesses[currentRow - 1]?.join("") || "";
-        if (lastGuess === _answer) {
-          setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+    // -------------------- INPUT --------------------
+    function handleKey(key){
+      if(isGameOver) return;
+
+      if(key==="enter"){
+        const guess=guesses[currentRow].join("");
+        if(guess.length<5) return setStatus("Not enough letters.");
+        if(!validGuesses.has(guess)) return setStatus("Not in word list.");
+
+        const colours=scoreGuess(guess);
+        paintRow(currentRow,colours);
+
+        for(let i=0;i<5;i++) upgradeKeyState(guess[i], colours[i]);
+        repaintKeyboard();
+        saveState();
+
+        if(guess===_answer){
+          isGameOver=true; saveState();
+          saveResultToSupabase({ puzzleId:getPuzzleId(), guessesUsed:currentRow+1, won:true });
+          return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+        }
+
+        currentRow++; currentCol=0;
+
+        if(currentRow===6){
+          isGameOver=true; saveState();
+          saveResultToSupabase({ puzzleId:getPuzzleId(), guessesUsed:6, won:false });
+          return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+        }
+
+        setStatus("");
+        return;
+      }
+
+      if(key==="backspace"){
+        if(currentCol>0){
+          currentCol--;
+          guesses[currentRow][currentCol]="";
+          updateTile(currentRow,currentCol,"");
+          saveState();
+        }
+        return;
+      }
+
+      if(/^[a-z]$/.test(key)){
+        if(currentCol<5){
+          guesses[currentRow][currentCol]=key;
+          updateTile(currentRow,currentCol,key);
+          currentCol++;
+          saveState();
+        }
+      }
+    }
+
+    window.addEventListener("keydown",(e)=>{
+      if(typeof e.key!=="string") return;
+      const k=e.key.toLowerCase();
+      if(k==="enter"||k==="backspace"||/^[a-z]$/.test(k)) handleKey(k);
+    });
+
+    // -------------------- STARTUP --------------------
+    async function startGame(){
+      setStatus("Loading word lists...");
+      await loadWordLists();
+
+      pickAnswer();
+      buildBoard();
+      buildKeyboard();
+
+      const restored=loadState();
+
+      if(restored){
+        for(let r=0;r<6;r++){
+          const guessStr=guesses[r].join("");
+          if(!guessStr) continue;
+
+          for(let c=0;c<5;c++) updateTile(r,c,guesses[r][c]);
+
+          if(r<currentRow){
+            const colours=scoreGuess(guessStr);
+            paintRow(r,colours);
+          }
+        }
+        repaintKeyboard();
+
+        if(isGameOver){
+          const lastGuess=guesses[currentRow-1]?.join("")||"";
+          if(lastGuess===_answer){
+            setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+          } else {
+            setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+          }
         } else {
-          setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+          setStatus("");
         }
       } else {
+        guesses.forEach(r=>r.fill(""));
+        currentRow=0; currentCol=0; isGameOver=false;
+        for(const k in keyState) delete keyState[k];
+        saveState();
         setStatus("");
       }
-    } else {
-      guesses.forEach(r => r.fill(""));
-      currentRow = 0;
-      currentCol = 0;
-      isGameOver = false;
-      for (const k in keyState) delete keyState[k];
-      saveState();
-      setStatus("");
     }
 
-    await refreshAuthUI();
-  }
-
-  /* ======================
-     CLEAN STARTUP FLOW
-  ====================== */
-  async function boot() {
-    try {
-      const returningFromLogin =
-        window.location.hash.includes("access_token") ||
-        window.location.search.includes("code=");
-
-      // shorten loader if coming back from login
-      const loaderDelay = returningFromLogin ? 300 : 5500;
-
-      // allow Supabase to auto detect the URL
-      if (returningFromLogin && supabase) {
-        await new Promise(r => setTimeout(r, 400));
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          history.replaceState({}, document.title, window.location.pathname);
-        }
+    // Boot order: consume login -> refresh UI -> start game
+    window.addEventListener("DOMContentLoaded", async ()=>{
+      try{
+        await consumeHashSessionIfPresent();
+        await refreshAuthUI();
+      } catch(e){
+        console.error("Auth boot error:", e);
+      } finally {
+        // ALWAYS start game even if auth fails
+        await startGame();
       }
+    });
 
-      await startGame();
-
-      // hide loader after delay, even if words fell back
-      setTimeout(() => {
-        clearTimeout(loaderFailSafe);
-        hideLoader();
-      }, loaderDelay);
-    } catch (e) {
-      console.error("Boot failed:", e);
-      // show game anyway
-      clearTimeout(loaderFailSafe);
-      hideLoader();
-    }
-  }
-
-  window.addEventListener("DOMContentLoaded", boot);
-})();
-</script>
+  })();
+  </script>
 </body>
 </html>
