@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>VP Wordle</title>
+
   <style>
     :root{
       --bg:#0f1115;
@@ -17,18 +18,17 @@
       --key:#232734;
       --key-text:#e7e9ee;
       --key-disabled:#151824;
+      --panel:#161922;
+      --panel-border:#262a36;
     }
-    #restartBtn {
-  display: none !important;
-}
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
     body{
       margin:0; background:var(--bg); color:var(--text);
       display:flex; flex-direction:column; align-items:center;
-      min-height:100vh; padding:18px 12px 28px; gap:14px;
+      min-height:100vh; padding:18px 12px 28px; gap:12px;
     }
     h1{ margin:6px 0 0; letter-spacing:2px; font-weight:800; }
-    .sub{ color:var(--muted); font-size:14px; margin-top:-6px; }
+    .sub{ color:var(--muted); font-size:14px; margin-top:-6px; text-align:center; }
 
     .board{
       display:grid; grid-template-rows: repeat(6, 1fr);
@@ -69,14 +69,42 @@
     button.key.grey{ background:var(--grey); color:#e5e7eb; }
     button.key.disabled{ background:var(--key-disabled); color:#555b6d; cursor:not-allowed; }
 
-    .controls{ display:flex; gap:8px; margin-top:4px; }
-    .controls button{
-      background:#1f2430; color:var(--text); border:1px solid #2a2f3a;
-      border-radius:10px; padding:8px 12px; cursor:pointer; font-weight:700;
-    }
-    .controls button:hover{ filter:brightness(1.08); }
-
     .footer{ color:var(--muted); font-size:12px; margin-top:auto; opacity:.9; }
+
+    /* Auth panel */
+    .auth-panel{
+      width:min(92vw, 520px);
+      background:var(--panel);
+      border:1px solid var(--panel-border);
+      border-radius:12px;
+      padding:10px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:center;
+      margin-top:2px;
+    }
+    .auth-panel input{
+      flex:1;
+      min-width:140px;
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid #333845;
+      background:#0f1115;
+      color:var(--text);
+      outline:none;
+    }
+    .auth-panel button{
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:700;
+      border:1px solid #333845;
+      background:#1f2430;
+      color:var(--text);
+    }
+    .auth-panel button:hover{ filter:brightness(1.08); }
+    .auth-note{ font-size:12px; color:var(--muted); text-align:center; margin-top:-4px; }
   </style>
 </head>
 <body>
@@ -86,86 +114,138 @@
   <div id="board" class="board"></div>
   <div id="status" class="status"></div>
 
-  <div class="controls">
-    <button id="restartBtn">Restart</button>
+  <!-- Supabase login -->
+  <div class="auth-panel" id="authBox">
+    <input id="emailInput" type="email" placeholder="Enter email to login" />
+    <button id="loginBtn">Send login link</button>
+    <button id="logoutBtn" style="display:none;">Logout</button>
   </div>
+  <div class="auth-note">Login is optional. If you login, your result is saved.</div>
 
   <div id="keyboard" class="keyboard"></div>
   <div class="footer">Physical keyboard supported.</div>
+
+  <!-- Supabase client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 (() => {
   "use strict";
 
-  // -------------------- PRIVATE GAME DATA (NOT EXPOSED) --------------------
+  // ==================== SUPABASE SETUP ====================
+  // Paste your values from Supabase Project Settings → API
+  const SUPABASE_URL = "PASTE_YOUR_PROJECT_URL_HERE";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_KEY_HERE";
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const emailInput = document.getElementById("emailInput");
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  async function refreshAuthUI() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      loginBtn.style.display = "none";
+      emailInput.style.display = "none";
+      logoutBtn.style.display = "inline-block";
+      setStatus("Logged in as " + user.email);
+    } else {
+      loginBtn.style.display = "inline-block";
+      emailInput.style.display = "inline-block";
+      logoutBtn.style.display = "none";
+    }
+  }
+
+  loginBtn.onclick = async () => {
+    const email = emailInput.value.trim();
+    if (!email) return setStatus("Enter an email to login.");
+
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) return setStatus("Login error: " + error.message, true);
+
+    setStatus("Check your email for a login link.");
+  };
+
+  logoutBtn.onclick = async () => {
+    await supabase.auth.signOut();
+    refreshAuthUI();
+    setStatus("Logged out.");
+  };
+
+  supabase.auth.onAuthStateChange(() => refreshAuthUI());
+
+
+  async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return; // not logged in, skip
+
+    await supabase.from("vpwordle_results").upsert({
+      user_id: user.id,
+      puzzle_id: puzzleId,
+      guesses_used: guessesUsed,
+      won: won
+    });
+  }
+
+  // ==================== PRIVATE GAME DATA ====================
   let solutions = [];
   let validGuesses = new Set();
 
-  // Answer is private to this closure and never attached to window.
+  // hidden answer in closure
   let _answer = "";
   const setAnswer = (w) => { _answer = w; };
 
-  // -------------------- DOM --------------------
+  // ==================== DOM ====================
   const boardEl = document.getElementById("board");
   const statusEl = document.getElementById("status");
   const keyboardEl = document.getElementById("keyboard");
-  const restartBtn = document.getElementById("restartBtn");
 
-  // -------------------- STATE --------------------
+  // ==================== STATE ====================
   let currentRow = 0;
   let currentCol = 0;
   let isGameOver = false;
   const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
   const keyState = {}; // unknown | grey | yellow | green
 
-  // -------------------- HELPERS --------------------
+  // ==================== HELPERS ====================
   function setStatus(msg, solid=false) {
     statusEl.textContent = msg;
     statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
   }
 
   async function loadWordLists() {
-    try {
-      const base = window.location.href;
+    const base = window.location.href;
 
-      const solURL = new URL("solutions.txt", base);
-      const guessURL = new URL("guesses.txt", base);
+    const solURL = new URL("solutions.txt", base);
+    const guessURL = new URL("guesses.txt", base);
 
-      // cache busting so GH Pages can't serve old files
-      solURL.searchParams.set("v", Date.now());
-      guessURL.searchParams.set("v", Date.now());
+    // cache buster
+    solURL.searchParams.set("v", Date.now());
+    guessURL.searchParams.set("v", Date.now());
 
-      const [solRes, guessRes] = await Promise.all([
-        fetch(solURL),
-        fetch(guessURL)
-      ]);
+    const [solRes, guessRes] = await Promise.all([
+      fetch(solURL),
+      fetch(guessURL)
+    ]);
 
-      if (!solRes.ok) throw new Error("solutions.txt not reachable");
-      if (!guessRes.ok) throw new Error("guesses.txt not reachable");
+    if (!solRes.ok) throw new Error("solutions.txt not reachable");
+    if (!guessRes.ok) throw new Error("guesses.txt not reachable");
 
-      const solText = await solRes.text();
-      const guessText = await guessRes.text();
+    const solText = await solRes.text();
+    const guessText = await guessRes.text();
 
-      solutions = solText
-        .split(/\r?\n/)
-        .map(w => w.trim().toLowerCase())
-        .filter(w => w.length === 5);
+    solutions = solText
+      .split(/\r?\n/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
 
-      const guessesArr = guessText
-        .split(/\r?\n/)
-        .map(w => w.trim().toLowerCase())
-        .filter(w => w.length === 5);
+    const guessesArr = guessText
+      .split(/\r?\n/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
 
-      validGuesses = new Set([...solutions, ...guessesArr]);
-
-      setStatus(""); // clear loading message
-    } catch (err) {
-      setStatus(
-        "Word lists failed to load. Check solutions.txt and guesses.txt are reachable.",
-        true
-      );
-      throw err;
-    }
+    validGuesses = new Set([...solutions, ...guessesArr]);
   }
 
   function getDailyIndex() {
@@ -175,6 +255,10 @@
       now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()
     ));
     return Math.floor((utcToday - start) / (1000*60*60*24));
+  }
+
+  function getPuzzleId() {
+    return getDailyIndex();
   }
 
   function getAnswerFromURL() {
@@ -194,11 +278,7 @@
     setAnswer(solutions[idx]);
   }
 
-  // -------------------- PERSISTENCE (LOCALSTORAGE) --------------------
-  function getPuzzleId() {
-    return getDailyIndex(); // ties save to today's daily puzzle
-  }
-
+  // ==================== LOCAL SAVE / RESTORE ====================
   function saveState() {
     const state = {
       puzzleId: getPuzzleId(),
@@ -217,7 +297,6 @@
 
     try {
       const state = JSON.parse(raw);
-
       if (state.puzzleId !== getPuzzleId()) {
         localStorage.removeItem("vpwordle_state");
         return false;
@@ -242,25 +321,7 @@
     }
   }
 
-  function hasStartedGame() {
-    return guesses.some(row => row.some(ch => ch));
-  }
-
-  function updateRestartLock() {
-    if (hasStartedGame()) {
-      restartBtn.disabled = true;
-      restartBtn.style.opacity = "0.6";
-      restartBtn.style.cursor = "not-allowed";
-      restartBtn.title = "You can't restart today's puzzle.";
-    } else {
-      restartBtn.disabled = false;
-      restartBtn.style.opacity = "1";
-      restartBtn.style.cursor = "pointer";
-      restartBtn.title = "";
-    }
-  }
-
-  // -------------------- UI BUILD --------------------
+  // ==================== UI BUILD ====================
   function buildBoard() {
     boardEl.innerHTML = "";
     for (let r = 0; r < 6; r++) {
@@ -333,9 +394,9 @@
     });
   }
 
-  // -------------------- SCORING (USES PRIVATE _answer) --------------------
+  // ==================== SCORING ====================
   function scoreGuess(guess) {
-    const answer = _answer; // private
+    const answer = _answer;
     const result = Array(5).fill("grey");
     const a = answer.split("");
     const g = guess.split("");
@@ -358,7 +419,7 @@
     return result;
   }
 
-  // -------------------- INPUT --------------------
+  // ==================== INPUT ====================
   function handleKey(key) {
     if (isGameOver) return;
 
@@ -375,14 +436,19 @@
       }
       repaintKeyboard();
 
-      // save after a completed guess
+      // save after a submitted guess
       saveState();
-      updateRestartLock();
 
       if (guess === _answer) {
         isGameOver = true;
         saveState();
-        updateRestartLock();
+
+        saveResultToSupabase({
+          puzzleId: getPuzzleId(),
+          guessesUsed: currentRow + 1,
+          won: true
+        });
+
         return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
       }
 
@@ -392,7 +458,13 @@
       if (currentRow === 6) {
         isGameOver = true;
         saveState();
-        updateRestartLock();
+
+        saveResultToSupabase({
+          puzzleId: getPuzzleId(),
+          guessesUsed: 6,
+          won: false
+        });
+
         return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
       }
 
@@ -425,68 +497,65 @@
     }
   });
 
-  // -------------------- RESET --------------------
-  async function resetGame() {
-    setStatus("Loading word lists...");
-    await loadWordLists();
+  // ==================== INIT / RESET ====================
+  async function startGame() {
+    try {
+      setStatus("Loading word lists...");
+      await loadWordLists();
 
-    if (solutions.length === 0 || validGuesses.size === 0) return;
+      pickAnswer();
+      buildBoard();
+      buildKeyboard();
 
-    // start fresh before restore
-    guesses.forEach(r => r.fill(""));
-    currentRow = 0;
-    currentCol = 0;
-    isGameOver = false;
-    for (const k in keyState) delete keyState[k];
+      // Restore if saved for today
+      const restored = loadState();
 
-    // restore if same daily puzzle
-    const restored = loadState();
+      if (restored) {
+        for (let r = 0; r < 6; r++) {
+          const guessStr = guesses[r].join("");
+          if (!guessStr) continue;
 
-    pickAnswer();
-    buildBoard();
-    buildKeyboard();
+          for (let c = 0; c < 5; c++) {
+            updateTile(r, c, guesses[r][c]);
+          }
 
-    if (restored) {
-      // repaint tiles text and colours for completed rows
-      for (let r = 0; r < 6; r++) {
-        const guessStr = guesses[r].join("");
-        if (!guessStr) continue;
-
-        for (let c = 0; c < 5; c++) {
-          updateTile(r, c, guesses[r][c]);
+          if (r < currentRow) {
+            const colours = scoreGuess(guessStr);
+            paintRow(r, colours);
+          }
         }
 
-        // only colour rows that were submitted
-        if (r < currentRow) {
-          const colours = scoreGuess(guessStr);
-          paintRow(r, colours);
-        }
-      }
+        repaintKeyboard();
 
-      repaintKeyboard();
-
-      if (isGameOver) {
-        const lastGuess = guesses[currentRow - 1]?.join("") || "";
-        if (lastGuess === _answer) {
-          setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+        if (isGameOver) {
+          const lastGuess = guesses[currentRow - 1]?.join("") || "";
+          if (lastGuess === _answer) {
+            setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+          } else {
+            setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+          }
         } else {
-          setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+          setStatus("");
         }
+      } else {
+        // fresh state
+        guesses.forEach(r => r.fill(""));
+        currentRow = 0;
+        currentCol = 0;
+        isGameOver = false;
+        for (const k in keyState) delete keyState[k];
+        saveState();
+        setStatus("");
       }
-    }
 
-    updateRestartLock();
+      refreshAuthUI();
+    } catch (err) {
+      setStatus("Failed to start game. Check word lists.", true);
+    }
   }
 
-  // Restart only if they haven't started today's puzzle
-  restartBtn.onclick = () => {
-    if (hasStartedGame()) return;
-    resetGame();
-  };
-
-  resetGame();
+  startGame();
 })();
 </script>
 </body>
 </html>
-
