@@ -21,62 +21,6 @@
       --panel:#161922;
       --panel-border:#262a36;
     }
-    /* Cool login button states */
-.auth-btn{
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap:8px;
-  min-width:150px;
-  transition: transform .08s ease, filter .2s ease, opacity .2s ease;
-}
-
-.auth-btn:hover{ filter:brightness(1.12); }
-.auth-btn:active{ transform: translateY(1px) scale(0.98); }
-
-.auth-btn.loading{
-  opacity:0.85;
-  cursor: wait;
-  transform: scale(0.98);
-}
-
-.auth-btn .btn-text{
-  transition: opacity .15s ease;
-}
-
-.auth-btn.loading .btn-text{
-  opacity:0.75;
-}
-
-/* Spinner */
-.spinner{
-  width:16px;
-  height:16px;
-  border-radius:50%;
-  border:2px solid rgba(255,255,255,0.25);
-  border-top-color: rgba(255,255,255,0.9);
-  display:none;
-  animation: spin .8s linear infinite;
-}
-
-.auth-btn.loading .spinner{
-  display:inline-block;
-}
-
-@keyframes spin{
-  to { transform: rotate(360deg); }
-}
-
-/* Little success pulse */
-.auth-btn.success{
-  animation: pulse .6s ease;
-}
-@keyframes pulse{
-  0%{ transform:scale(1); }
-  50%{ transform:scale(1.06); }
-  100%{ transform:scale(1); }
-}
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
     body{
       margin:0; background:var(--bg); color:var(--text);
@@ -161,28 +105,182 @@
     }
     .auth-panel button:hover{ filter:brightness(1.08); }
     .auth-note{ font-size:12px; color:var(--muted); text-align:center; margin-top:-4px; }
+
+    /* Cool login button states */
+    .auth-btn{
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap:8px;
+      min-width:150px;
+      transition: transform .08s ease, filter .2s ease, opacity .2s ease;
+    }
+    .auth-btn:hover{ filter:brightness(1.12); }
+    .auth-btn:active{ transform: translateY(1px) scale(0.98); }
+    .auth-btn.loading{
+      opacity:0.85;
+      cursor: wait;
+      transform: scale(0.98);
+    }
+    .auth-btn .btn-text{
+      transition: opacity .15s ease;
+    }
+    .auth-btn.loading .btn-text{
+      opacity:0.75;
+    }
+    .spinner{
+      width:16px;
+      height:16px;
+      border-radius:50%;
+      border:2px solid rgba(255,255,255,0.25);
+      border-top-color: rgba(255,255,255,0.9);
+      display:none;
+      animation: spin .8s linear infinite;
+    }
+    .auth-btn.loading .spinner{
+      display:inline-block;
+    }
+    @keyframes spin{
+      to { transform: rotate(360deg); }
+    }
+    .auth-btn.success{
+      animation: pulse .6s ease;
+    }
+    @keyframes pulse{
+      0%{ transform:scale(1); }
+      50%{ transform:scale(1.06); }
+      100%{ transform:scale(1); }
+    }
+
+    /* ===== VP LOADER ===== */
+    .vp-loader{
+      position:fixed;
+      inset:0;
+      background: radial-gradient(ellipse at center, #141824 0%, #0b0d12 60%, #05060a 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      opacity:1;
+      transition: opacity 700ms ease;
+    }
+    .vp-loader.hide{
+      opacity:0;
+      pointer-events:none;
+    }
+    .vp-loader-inner{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:12px;
+      transform: translateY(-10px);
+    }
+    .vp-loader-img{
+      width:140px;
+      height:140px;
+      border-radius:50%;
+      object-fit:cover;
+      border:3px solid rgba(255,255,255,0.08);
+      box-shadow: 0 0 40px rgba(47,191,113,0.18);
+      animation: vpSpin 2.8s linear infinite, vpFloat 1.6s ease-in-out infinite;
+    }
+    .vp-loader-title{
+      font-size:32px;
+      font-weight:900;
+      letter-spacing:3px;
+      text-transform:uppercase;
+      background: linear-gradient(90deg, #ffffff, #9ad7ff, #ffffff);
+      -webkit-background-clip:text;
+      background-clip:text;
+      color:transparent;
+      animation: vpGlow 1.8s ease-in-out infinite;
+    }
+    .vp-loader-sub{
+      font-size:14px;
+      color:#9aa1b2;
+      letter-spacing:1px;
+      text-transform:uppercase;
+    }
+    .dots span{
+      display:inline-block;
+      animation: dotBounce 1.1s infinite;
+    }
+    .dots span:nth-child(2){ animation-delay: .15s; }
+    .dots span:nth-child(3){ animation-delay: .30s; }
+
+    @keyframes vpSpin{ to{ transform: rotate(360deg); } }
+    @keyframes vpFloat{
+      0%,100%{ transform: translateY(0); }
+      50%{ transform: translateY(-6px); }
+    }
+    @keyframes vpGlow{
+      0%,100%{ filter: drop-shadow(0 0 0 rgba(154,215,255,0)); }
+      50%{ filter: drop-shadow(0 0 12px rgba(154,215,255,0.55)); }
+    }
+    @keyframes dotBounce{
+      0%,100%{ transform: translateY(0); opacity:.4; }
+      50%{ transform: translateY(-4px); opacity:1; }
+    }
+
+    /* Hide game until loader finishes */
+    .game-wrapper{
+      opacity:0;
+      transition: opacity 600ms ease;
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:12px;
+    }
+    .game-wrapper.show{
+      opacity:1;
+    }
   </style>
 </head>
 <body>
-  <h1>WORDLE</h1>
-  <div class="sub">Guess the 5 letter word. You have 6 tries.</div>
 
-  <div id="board" class="board"></div>
-  <div id="status" class="status"></div>
-
-  <!-- Supabase login -->
-  <div class="auth-panel" id="authBox">
-    <input id="emailInput" type="email" placeholder="Enter email to login" />
-    <button id="loginBtn" class="auth-btn">
-  <span class="btn-text">Send login link</span>
-  <span class="spinner" aria-hidden="true"></span>
-</button>
-    <button id="logoutBtn" style="display:none;">Logout</button>
+  <!-- VP Wordle Loading Screen -->
+  <div id="vpLoader" class="vp-loader">
+    <div class="vp-loader-inner">
+      <img
+        src="/mnt/data/Copy of Jay Recycle .png"
+        alt="VP Loader"
+        class="vp-loader-img"
+      />
+      <!-- IMPORTANT: replace the src above with your hosted image URL on GitHub Pages -->
+      <div class="vp-loader-title">VP WORDLE</div>
+      <div class="vp-loader-sub">
+        Loading
+        <span class="dots"><span>.</span><span>.</span><span>.</span></span>
+      </div>
+    </div>
   </div>
-  <div class="auth-note">Login is optional. If you login, your result is saved.</div>
 
-  <div id="keyboard" class="keyboard"></div>
-  <div class="footer">Physical keyboard supported.</div>
+  <!-- Wrap the game so we can fade it in -->
+  <div id="gameWrapper" class="game-wrapper">
+
+    <h1>WORDLE</h1>
+    <div class="sub">Guess the 5 letter word. You have 6 tries.</div>
+
+    <div id="board" class="board"></div>
+    <div id="status" class="status"></div>
+
+    <!-- Supabase login -->
+    <div class="auth-panel" id="authBox">
+      <input id="emailInput" type="email" placeholder="Enter email to login" />
+      <button id="loginBtn" class="auth-btn">
+        <span class="btn-text">Send login link</span>
+        <span class="spinner" aria-hidden="true"></span>
+      </button>
+      <button id="logoutBtn" style="display:none;">Logout</button>
+    </div>
+    <div class="auth-note">Login is optional. If you login, your result is saved.</div>
+
+    <div id="keyboard" class="keyboard"></div>
+    <div class="footer">Physical keyboard supported.</div>
+
+  </div><!-- end gameWrapper -->
 
   <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -191,16 +289,33 @@
 (() => {
   "use strict";
 
+  // ===== Loader control =====
+  const vpLoader = document.getElementById("vpLoader");
+  const gameWrapper = document.getElementById("gameWrapper");
+
+  function hideLoader() {
+    if (!vpLoader) return;
+    vpLoader.classList.add("hide");
+    gameWrapper.classList.add("show");
+    setTimeout(() => vpLoader.remove(), 800);
+  }
+  setTimeout(hideLoader, 5500);
+
   // ==================== SUPABASE SETUP ====================
-  // Paste your values from Supabase Project Settings → API
-  const SUPABASE_URL = "https://ruenrertnvhyglbwhqpc.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_3jLPUT8TNCr-gJtrA5rPFg_A11cxx2G";
+  const SUPABASE_URL = "PASTE_YOUR_PROJECT_URL_HERE";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_PUBLISHABLE_KEY_HERE";
 
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const emailInput = document.getElementById("emailInput");
   const loginBtn = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
+
+  function setStatus(msg, solid=false) {
+    const statusEl = document.getElementById("status");
+    statusEl.textContent = msg;
+    statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
+  }
 
   async function refreshAuthUI() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -210,46 +325,43 @@
       logoutBtn.style.display = "inline-block";
       setStatus("Logged in as " + user.email);
     } else {
-      loginBtn.style.display = "inline-block";
+      loginBtn.style.display = "inline-flex";
       emailInput.style.display = "inline-block";
       logoutBtn.style.display = "none";
     }
   }
 
- loginBtn.onclick = async () => {
-  const email = emailInput.value.trim();
-  if (!email) return setStatus("Enter an email to login.");
+  loginBtn.onclick = async () => {
+    const email = emailInput.value.trim();
+    if (!email) return setStatus("Enter an email to login.");
 
-  // start loading state
-  loginBtn.classList.add("loading");
-  loginBtn.disabled = true;
-  setStatus("Sending magic link...");
+    loginBtn.classList.add("loading");
+    loginBtn.disabled = true;
+    setStatus("Sending magic link...");
 
-  try {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin + window.location.pathname
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname
+        }
+      });
+
+      if (error) {
+        setStatus("Login error: " + error.message, true);
+        return;
       }
-    });
 
-    if (error) {
-      setStatus("Login error: " + error.message, true);
-      return;
+      loginBtn.classList.remove("loading");
+      loginBtn.classList.add("success");
+      setTimeout(() => loginBtn.classList.remove("success"), 700);
+
+      setStatus("Magic link sent. Check your email.");
+    } finally {
+      loginBtn.classList.remove("loading");
+      loginBtn.disabled = false;
     }
-
-    // success pulse
-    loginBtn.classList.remove("loading");
-    loginBtn.classList.add("success");
-    setTimeout(() => loginBtn.classList.remove("success"), 700);
-
-    setStatus("Magic link sent. Check your email.");
-  } finally {
-    loginBtn.classList.remove("loading");
-    loginBtn.disabled = false;
-  }
-};
-
+  };
 
   logoutBtn.onclick = async () => {
     await supabase.auth.signOut();
@@ -259,16 +371,15 @@
 
   supabase.auth.onAuthStateChange(() => refreshAuthUI());
 
-
   async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return; // not logged in, skip
+    if (!user) return;
 
     await supabase.from("vpwordle_results").upsert({
       user_id: user.id,
       puzzle_id: puzzleId,
       guesses_used: guessesUsed,
-      won: won
+      won
     });
   }
 
@@ -276,13 +387,11 @@
   let solutions = [];
   let validGuesses = new Set();
 
-  // hidden answer in closure
   let _answer = "";
   const setAnswer = (w) => { _answer = w; };
 
   // ==================== DOM ====================
   const boardEl = document.getElementById("board");
-  const statusEl = document.getElementById("status");
   const keyboardEl = document.getElementById("keyboard");
 
   // ==================== STATE ====================
@@ -290,21 +399,15 @@
   let currentCol = 0;
   let isGameOver = false;
   const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
-  const keyState = {}; // unknown | grey | yellow | green
+  const keyState = {};
 
-  // ==================== HELPERS ====================
-  function setStatus(msg, solid=false) {
-    statusEl.textContent = msg;
-    statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
-  }
-
+  // ==================== WORD LISTS ====================
   async function loadWordLists() {
     const base = window.location.href;
 
     const solURL = new URL("solutions.txt", base);
     const guessURL = new URL("guesses.txt", base);
 
-    // cache buster
     solURL.searchParams.set("v", Date.now());
     guessURL.searchParams.set("v", Date.now());
 
@@ -319,15 +422,8 @@
     const solText = await solRes.text();
     const guessText = await guessRes.text();
 
-    solutions = solText
-      .split(/\r?\n/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length === 5);
-
-    const guessesArr = guessText
-      .split(/\r?\n/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length === 5);
+    solutions = solText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
+    const guessesArr = guessText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
 
     validGuesses = new Set([...solutions, ...guessesArr]);
   }
@@ -335,15 +431,10 @@
   function getDailyIndex() {
     const start = new Date("2021-06-19T00:00:00Z");
     const now = new Date();
-    const utcToday = new Date(Date.UTC(
-      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()
-    ));
+    const utcToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     return Math.floor((utcToday - start) / (1000*60*60*24));
   }
-
-  function getPuzzleId() {
-    return getDailyIndex();
-  }
+  function getPuzzleId(){ return getDailyIndex(); }
 
   function getAnswerFromURL() {
     const params = new URLSearchParams(window.location.search);
@@ -391,7 +482,6 @@
           guesses[r][c] = state.guesses?.[r]?.[c] || "";
         }
       }
-
       currentRow = state.currentRow || 0;
       currentCol = state.currentCol || 0;
       isGameOver = !!state.isGameOver;
@@ -485,7 +575,6 @@
     const a = answer.split("");
     const g = guess.split("");
 
-    // greens
     for (let i = 0; i < 5; i++) {
       if (g[i] === a[i]) {
         result[i] = "green";
@@ -493,7 +582,6 @@
         g[i] = null;
       }
     }
-    // yellows
     for (let i = 0; i < 5; i++) {
       if (g[i] && a.includes(g[i])) {
         result[i] = "yellow";
@@ -515,12 +603,9 @@
       const colours = scoreGuess(guess);
       paintRow(currentRow, colours);
 
-      for (let i = 0; i < 5; i++) {
-        upgradeKeyState(guess[i], colours[i]);
-      }
+      for (let i = 0; i < 5; i++) upgradeKeyState(guess[i], colours[i]);
       repaintKeyboard();
 
-      // save after a submitted guess
       saveState();
 
       if (guess === _answer) {
@@ -576,12 +661,10 @@
 
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
-    if (k === "enter" || k === "backspace" || /^[a-z]$/.test(k)) {
-      handleKey(k);
-    }
+    if (k === "enter" || k === "backspace" || /^[a-z]$/.test(k)) handleKey(k);
   });
 
-  // ==================== INIT / RESET ====================
+  // ==================== INIT ====================
   async function startGame() {
     try {
       setStatus("Loading word lists...");
@@ -591,7 +674,6 @@
       buildBoard();
       buildKeyboard();
 
-      // Restore if saved for today
       const restored = loadState();
 
       if (restored) {
@@ -599,16 +681,13 @@
           const guessStr = guesses[r].join("");
           if (!guessStr) continue;
 
-          for (let c = 0; c < 5; c++) {
-            updateTile(r, c, guesses[r][c]);
-          }
+          for (let c = 0; c < 5; c++) updateTile(r, c, guesses[r][c]);
 
           if (r < currentRow) {
             const colours = scoreGuess(guessStr);
             paintRow(r, colours);
           }
         }
-
         repaintKeyboard();
 
         if (isGameOver) {
@@ -622,7 +701,6 @@
           setStatus("");
         }
       } else {
-        // fresh state
         guesses.forEach(r => r.fill(""));
         currentRow = 0;
         currentCol = 0;
@@ -643,6 +721,3 @@
 </script>
 </body>
 </html>
-
-
-
