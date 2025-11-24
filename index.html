@@ -288,7 +288,7 @@
   (() => {
     "use strict";
 
-    // ===== Always show JS errors on screen (so nothing fails silently) =====
+    // ===== Always show JS errors on screen =====
     function setStatus(msg, solid=false) {
       const statusEl = document.getElementById("status");
       if (!statusEl) return;
@@ -317,14 +317,12 @@
       setTimeout(() => vpLoader.remove(), 800);
     }
 
-    // Detect if returning from a Supabase magic link
     const returningFromLogin =
       window.location.hash.includes("access_token") ||
       window.location.hash.includes("refresh_token") ||
       window.location.hash.includes("type=magiclink") ||
       window.location.hash.includes("type=recovery");
 
-    // Short loader if returning from login
     setTimeout(hideLoader, returningFromLogin ? 300 : 5500);
 
     // ==================== SUPABASE SETUP (SAFE) ====================
@@ -343,41 +341,50 @@
       const keyLooksReal = SUPABASE_ANON_KEY.startsWith("sb_publishable_") || SUPABASE_ANON_KEY.startsWith("eyJ");
 
       if (urlLooksReal && keyLooksReal && window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession: true, detectSessionInUrl: false }
+        });
       } else {
         authBox.style.display = "none";
         console.warn("Supabase not configured. Game will still run.");
       }
     } catch (e) {
       authBox.style.display = "none";
-      console.error("Supabase init failed, continuing without login:", e);
+      console.error("Supabase init failed:", e);
     }
 
-    // ✅ Consume magic link tokens if present in URL
+    // ✅ Manual magic link consumption (works on CDN v2)
     async function handleMagicLinkLogin() {
       if (!supabase) return;
 
-      const hash = window.location.hash || "";
-      const hasAuthHash =
-        hash.includes("access_token") ||
-        hash.includes("refresh_token") ||
-        hash.includes("type=magiclink") ||
-        hash.includes("type=recovery");
+      const hash = (window.location.hash || "").replace(/^#/, "");
+      if (!hash) return;
 
-      if (!hasAuthHash) return;
+      const params = new URLSearchParams(hash);
 
-      const { data, error } = await supabase.auth.getSessionFromUrl({
-        storeSession: true
-      });
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const error_description = params.get("error_description");
 
-      if (error) {
-        console.error("Magic link exchange failed:", error);
-        setStatus("Login link error. Try again.", true);
+      if (error_description) {
+        setStatus("Login link error: " + decodeURIComponent(error_description), true);
         return;
       }
 
-      if (data?.session) {
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        });
+
+        if (error) {
+          console.error("setSession failed:", error);
+          setStatus("Login failed. Try again.", true);
+          return;
+        }
+
         setStatus("Logged in successfully.", true);
+        // clean URL
         history.replaceState({}, document.title, window.location.pathname);
       }
     }
@@ -469,7 +476,7 @@
     const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
     const keyState = {};
 
-    // ==================== WORD LISTS (ROCK SOLID + FALLBACK) ====================
+    // ==================== WORD LISTS ====================
     async function loadWordLists() {
       const base = window.location.origin + "/VPwordle/";
       const solURL = base + "solutions.txt?v=" + Date.now();
@@ -695,7 +702,9 @@
       }
     }
 
+    // ✅ Guard e.key before toLowerCase
     window.addEventListener("keydown",(e)=>{
+      if (typeof e.key !== "string") return;
       const k=e.key.toLowerCase();
       if(k==="enter"||k==="backspace"||/^[a-z]$/.test(k)) handleKey(k);
     });
