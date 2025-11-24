@@ -423,31 +423,40 @@ async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
   const keyState = {};
 
   // ==================== WORD LISTS ====================
-  async function loadWordLists() {
-    const base = window.location.href;
+async function loadWordLists() {
+  const base = window.location.origin + window.location.pathname; 
+  // ^ stable base, ignores query strings / weird fragments
 
-    const solURL = new URL("solutions.txt", base);
-    const guessURL = new URL("guesses.txt", base);
+  const solURL = new URL("solutions.txt", base);
+  const guessURL = new URL("guesses.txt", base);
 
-    solURL.searchParams.set("v", Date.now());
-    guessURL.searchParams.set("v", Date.now());
+  // cache buster
+  solURL.searchParams.set("v", Date.now());
+  guessURL.searchParams.set("v", Date.now());
 
-    const [solRes, guessRes] = await Promise.all([
-      fetch(solURL),
-      fetch(guessURL)
-    ]);
+  const [solRes, guessRes] = await Promise.all([
+    fetch(solURL),
+    fetch(guessURL)
+  ]);
 
-    if (!solRes.ok) throw new Error("solutions.txt not reachable");
-    if (!guessRes.ok) throw new Error("guesses.txt not reachable");
+  if (!solRes.ok) throw new Error("solutions.txt not reachable");
+  if (!guessRes.ok) throw new Error("guesses.txt not reachable");
 
-    const solText = await solRes.text();
-    const guessText = await guessRes.text();
+  const solText = await solRes.text();
+  const guessText = await guessRes.text();
 
-    solutions = solText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
-    const guessesArr = guessText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
+  solutions = solText
+    .split(/\r?\n/)
+    .map(w => w.trim().toLowerCase())
+    .filter(w => w.length === 5);
 
-    validGuesses = new Set([...solutions, ...guessesArr]);
-  }
+  const guessesArr = guessText
+    .split(/\r?\n/)
+    .map(w => w.trim().toLowerCase())
+    .filter(w => w.length === 5);
+
+  validGuesses = new Set([...solutions, ...guessesArr]);
+}
 
   function getDailyIndex() {
     const start = new Date("2021-06-19T00:00:00Z");
@@ -742,6 +751,7 @@ async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
 </script>
 </body>
 </html>
+
 
 
 
