@@ -317,7 +317,15 @@
     gameWrapper.classList.add("show");
     setTimeout(() => vpLoader.remove(), 800);
   }
-  setTimeout(hideLoader, 5500);
+  // Detect if returning from a Supabase magic link
+const returningFromLogin =
+  window.location.hash.includes("access_token") ||
+  window.location.hash.includes("refresh_token") ||
+  window.location.hash.includes("type=magiclink");
+
+// Short loader if returning from login
+setTimeout(hideLoader, returningFromLogin ? 300 : 5500);
+
 
   // ==================== SUPABASE SETUP (SAFE) ====================
   const SUPABASE_URL = "https://ruenrertnvhyglbwhqpc.supabase.co";
@@ -336,6 +344,32 @@
 
     if (urlLooksReal && keyLooksReal && window.supabase) {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      // ✅ Consume magic link tokens if present in URL
+async function handleMagicLinkLogin() {
+  if (!supabase) return;
+
+  // Supabase magic links usually return tokens in the URL hash
+  const hasAuthHash = window.location.hash.includes("access_token") ||
+                      window.location.hash.includes("refresh_token") ||
+                      window.location.hash.includes("type=magiclink");
+
+  if (!hasAuthHash) return;
+
+  const { data, error } = await supabase.auth.getSessionFromUrl({ storeSession: true });
+
+  if (error) {
+    console.error("Magic link exchange failed:", error);
+    setStatus("Login link error. Try again.", true);
+    return;
+  }
+
+  if (data?.session) {
+    setStatus("Logged in successfully.", true);
+
+    // Clean up the URL so tokens aren't visible
+    history.replaceState({}, document.title, window.location.pathname);
+  }
+}
     } else {
       authBox.style.display = "none";
       console.warn("Supabase not configured. Game will still run.");
@@ -667,6 +701,7 @@
   });
 
   async function startGame(){
+    await handleMagicLinkLogin();
     setStatus("Loading word lists...");
     await loadWordLists();
 
@@ -707,6 +742,7 @@
 </script>
 </body>
 </html>
+
 
 
 
