@@ -21,18 +21,12 @@
       --panel:#161922;
       --panel-border:#262a36;
     }
-
-    *{
-      box-sizing:border-box;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-    }
-
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;}
     body{
       margin:0; background:var(--bg); color:var(--text);
       display:flex; flex-direction:column; align-items:center;
       min-height:100vh; padding:18px 12px 28px; gap:12px;
     }
-
     h1{ margin:6px 0 0; letter-spacing:2px; font-weight:800; }
     .sub{ color:var(--muted); font-size:14px; margin-top:-6px; text-align:center; }
 
@@ -41,7 +35,6 @@
       gap:8px; margin-top:8px; width:min(92vw, 380px);
     }
     .row{ display:grid; grid-template-columns: repeat(5, 1fr); gap:8px; }
-
     .tile{
       aspect-ratio:1/1; background:var(--tile);
       border:2px solid var(--tile-border); border-radius:10px;
@@ -55,17 +48,13 @@
     .tile.yellow{ background:var(--yellow); border-color:var(--yellow); color:#0b0d12; }
     .tile.grey{ background:var(--grey); border-color:var(--grey); color:#e5e7eb; }
 
-    .status{
-      min-height:22px; font-size:15px; color:var(--muted);
-      text-align:center; margin-top:2px;
-    }
+    .status{ min-height:22px; font-size:15px; color:var(--muted); text-align:center; margin-top:2px; }
 
     .keyboard{
       display:flex; flex-direction:column; gap:8px;
       width:min(96vw, 520px); margin-top:6px;
     }
     .keyrow{ display:flex; gap:6px; justify-content:center; }
-
     button.key{
       background:var(--key); color:var(--key-text); border:none;
       padding:12px 10px; border-radius:10px; font-weight:700;
@@ -89,65 +78,89 @@
       border:1px solid var(--panel-border);
       border-radius:12px;
       padding:10px;
-      display:flex; gap:8px; align-items:center; justify-content:center;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:center;
       margin-top:2px;
     }
     .auth-panel input{
-      flex:1; min-width:140px; padding:8px 10px;
-      border-radius:8px; border:1px solid #333845;
-      background:#0f1115; color:var(--text); outline:none;
+      flex:1;
+      min-width:140px;
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid #333845;
+      background:#0f1115;
+      color:var(--text);
+      outline:none;
     }
     .auth-panel button{
-      padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:700;
-      border:1px solid #333845; background:#1f2430; color:var(--text);
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:700;
+      border:1px solid #333845;
+      background:#1f2430;
+      color:var(--text);
     }
     .auth-panel button:hover{ filter:brightness(1.08); }
     .auth-note{ font-size:12px; color:var(--muted); text-align:center; margin-top:-4px; }
 
     /* Cool login button states */
     .auth-btn{
-      position: relative; display:inline-flex; align-items:center; justify-content:center;
-      gap:8px; min-width:150px;
-      transition:transform .08s ease, filter .2s ease, opacity .2s ease;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap:8px;
+      min-width:150px;
+      transition: transform .08s ease, filter .2s ease, opacity .2s ease;
     }
     .auth-btn:hover{ filter:brightness(1.12); }
-    .auth-btn:active{ transform: translateY(1px) scale(.98); }
-    .auth-btn.loading{ opacity:.85; cursor:wait; transform:scale(.98); }
+    .auth-btn:active{ transform: translateY(1px) scale(0.98); }
+    .auth-btn.loading{
+      opacity:0.85;
+      cursor: wait;
+      transform: scale(0.98);
+    }
     .auth-btn .btn-text{ transition: opacity .15s ease; }
-    .auth-btn.loading .btn-text{ opacity:.75; }
+    .auth-btn.loading .btn-text{ opacity:0.75; }
     .spinner{
       width:16px; height:16px; border-radius:50%;
-      border:2px solid rgba(255,255,255,.25);
-      border-top-color: rgba(255,255,255,.9);
+      border:2px solid rgba(255,255,255,0.25);
+      border-top-color: rgba(255,255,255,0.9);
       display:none; animation: spin .8s linear infinite;
     }
     .auth-btn.loading .spinner{ display:inline-block; }
-    @keyframes spin{ to{ transform:rotate(360deg); } }
-    .auth-btn.success{ animation:pulse .6s ease; }
-    @keyframes pulse{ 0%{transform:scale(1)} 50%{transform:scale(1.06)} 100%{transform:scale(1)} }
+    @keyframes spin{ to { transform: rotate(360deg); } }
+    .auth-btn.success{ animation: pulse .6s ease; }
+    @keyframes pulse{
+      0%{ transform:scale(1); }
+      50%{ transform:scale(1.06); }
+      100%{ transform:scale(1); }
+    }
 
     /* ===== VP LOADER ===== */
     .vp-loader{
       position:fixed; inset:0;
       background: radial-gradient(ellipse at center, #141824 0%, #0b0d12 60%, #05060a 100%);
       display:flex; align-items:center; justify-content:center;
-      z-index:9999; opacity:1; transition:opacity 700ms ease;
+      z-index:9999; opacity:1; transition: opacity 700ms ease;
     }
     .vp-loader.hide{ opacity:0; pointer-events:none; }
-
     .vp-loader-inner{
       display:flex; flex-direction:column; align-items:center; gap:12px;
       transform: translateY(-10px);
     }
     .vp-loader-img{
       width:140px; height:140px; border-radius:50%; object-fit:cover;
-      border:3px solid rgba(255,255,255,.08);
-      box-shadow:0 0 40px rgba(47,191,113,.18);
+      border:3px solid rgba(255,255,255,0.08);
+      box-shadow: 0 0 40px rgba(47,191,113,0.18);
       animation: vpSpin 2.8s linear infinite, vpFloat 1.6s ease-in-out infinite;
     }
     .vp-loader-title{
       font-size:32px; font-weight:900; letter-spacing:3px; text-transform:uppercase;
-      background: linear-gradient(90deg, #fff, #9ad7ff, #fff);
+      background: linear-gradient(90deg, #ffffff, #9ad7ff, #ffffff);
       -webkit-background-clip:text; background-clip:text; color:transparent;
       animation: vpGlow 1.8s ease-in-out infinite;
     }
@@ -155,16 +168,16 @@
       font-size:14px; color:#9aa1b2; letter-spacing:1px; text-transform:uppercase;
     }
     .dots span{ display:inline-block; animation: dotBounce 1.1s infinite; }
-    .dots span:nth-child(2){ animation-delay:.15s; }
-    .dots span:nth-child(3){ animation-delay:.30s; }
+    .dots span:nth-child(2){ animation-delay: .15s; }
+    .dots span:nth-child(3){ animation-delay: .30s; }
 
-    @keyframes vpSpin{ to{transform:rotate(360deg)} }
-    @keyframes vpFloat{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-    @keyframes vpGlow{ 0%,100%{filter:none} 50%{filter:drop-shadow(0 0 12px rgba(154,215,255,.55))} }
-    @keyframes dotBounce{ 0%,100%{transform:translateY(0);opacity:.4} 50%{transform:translateY(-4px);opacity:1} }
+    @keyframes vpSpin{ to{ transform: rotate(360deg); } }
+    @keyframes vpFloat{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-6px); } }
+    @keyframes vpGlow{ 0%,100%{ filter:none; } 50%{ filter: drop-shadow(0 0 12px rgba(154,215,255,0.55)); } }
+    @keyframes dotBounce{ 0%,100%{ transform: translateY(0); opacity:.4; } 50%{ transform: translateY(-4px); opacity:1; } }
 
     .game-wrapper{
-      opacity:0; transition:opacity 600ms ease; width:100%;
+      opacity:0; transition: opacity 600ms ease; width:100%;
       display:flex; flex-direction:column; align-items:center; gap:12px;
     }
     .game-wrapper.show{ opacity:1; }
@@ -187,7 +200,6 @@
     </div>
   </div>
 
-  <!-- Game Wrapper -->
   <div id="gameWrapper" class="game-wrapper">
     <h1>WORDLE</h1>
     <div class="sub">Guess the 5 letter word. You have 6 tries.</div>
@@ -195,7 +207,6 @@
     <div id="board" class="board"></div>
     <div id="status" class="status"></div>
 
-    <!-- Supabase login -->
     <div class="auth-panel" id="authBox">
       <input id="emailInput" type="email" placeholder="Enter email to login" />
       <button id="loginBtn" class="auth-btn">
@@ -210,17 +221,16 @@
     <div class="footer">Physical keyboard supported.</div>
   </div>
 
-  <!-- Supabase client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
   (() => {
     "use strict";
 
-    /* ==================== STATUS + ERRORS ==================== */
+    // --------------------- STATUS & ERROR DISPLAY ---------------------
     const statusEl = document.getElementById("status");
-    function setStatus(msg, solid=false) {
-      if (!statusEl) return;
+    function setStatus(msg, solid=false){
+      if(!statusEl) return;
       statusEl.textContent = msg;
       statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
     }
@@ -235,12 +245,12 @@
       console.error(e);
     });
 
-    /* ==================== LOADER ==================== */
+    // --------------------- LOADER ---------------------
     const vpLoader = document.getElementById("vpLoader");
     const gameWrapper = document.getElementById("gameWrapper");
 
-    function hideLoader() {
-      if (!vpLoader) return;
+    function hideLoader(){
+      if(!vpLoader) return;
       vpLoader.classList.add("hide");
       gameWrapper.classList.add("show");
       setTimeout(() => vpLoader.remove(), 800);
@@ -248,16 +258,16 @@
 
     const returningFromLogin =
       window.location.hash.includes("access_token") ||
+      window.location.hash.includes("refresh_token") ||
       window.location.search.includes("code=");
 
     setTimeout(hideLoader, returningFromLogin ? 300 : 5500);
 
-    /* ==================== SUPABASE ==================== */
+    // --------------------- SUPABASE ---------------------
     const SUPABASE_URL = "https://ruenrertnvhyglbwhqpc.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_3jLPUT8TNCr-gJtrA5rPFg_A11cxx2G";
 
     let supabase = null;
-
     const emailInput = document.getElementById("emailInput");
     const loginBtn = document.getElementById("loginBtn");
     const logoutBtn = document.getElementById("logoutBtn");
@@ -265,6 +275,7 @@
 
     try {
       if (window.supabase) {
+        // We manually consume hash tokens to be GH Pages safe
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           auth: { persistSession: true, detectSessionInUrl: false }
         });
@@ -276,96 +287,95 @@
       console.error("Supabase init failed:", e);
     }
 
-    async function consumeHashSessionIfPresent() {
-      if (!supabase) return;
+    async function consumeHashSessionIfPresent(){
+      if(!supabase) return false;
 
       const rawHash = window.location.hash || "";
-      if (!rawHash.includes("access_token") || !rawHash.includes("refresh_token")) return;
+      if(!rawHash.includes("access_token") || !rawHash.includes("refresh_token")) return false;
 
       const params = new URLSearchParams(rawHash.replace(/^#/, ""));
       const access_token = params.get("access_token");
       const refresh_token = params.get("refresh_token");
       const error_description = params.get("error_description");
 
-      if (error_description) {
+      if(error_description){
         setStatus("Login link error: " + decodeURIComponent(error_description), true);
-        return;
+        return false;
       }
-      if (!access_token || !refresh_token) return;
+      if(!access_token || !refresh_token) return false;
 
-      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (error) {
-        console.error("setSession failed:", error);
+      const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if(error){
+        console.error(error);
         setStatus("Login failed. Try again.", true);
-        return;
+        return false;
       }
 
+      // clean URL AFTER session is set
       history.replaceState({}, document.title, window.location.pathname);
+      return !!data?.session?.user;
     }
 
-    async function refreshAuthUI() {
-      if (!supabase) return;
+    async function refreshAuthUI(){
+      if(!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if(user){
         loginBtn.style.display = "none";
         emailInput.style.display = "none";
         logoutBtn.style.display = "inline-block";
         setStatus("Logged in as " + user.email);
-      } else {
+      }else{
         loginBtn.style.display = "inline-flex";
         emailInput.style.display = "inline-block";
         logoutBtn.style.display = "none";
       }
     }
 
-    if (loginBtn) {
-      loginBtn.onclick = async () => {
-        if (!supabase) return setStatus("Login not configured yet.");
-
-        const email = emailInput.value.trim();
-        if (!email) return setStatus("Enter an email to login.");
-
-        loginBtn.classList.add("loading");
-        loginBtn.disabled = true;
-        setStatus("Sending magic link...");
-
-        try {
-          const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: { emailRedirectTo: "https://chrisvp5.github.io/VPwordle/" }
-          });
-          if (error) return setStatus("Login error: " + error.message, true);
-
-          loginBtn.classList.remove("loading");
-          loginBtn.classList.add("success");
-          setTimeout(() => loginBtn.classList.remove("success"), 700);
-
-          setStatus("Magic link sent. Check your email.");
-        } finally {
-          loginBtn.classList.remove("loading");
-          loginBtn.disabled = false;
-        }
-      };
-    }
-
-    if (logoutBtn) {
-      logoutBtn.onclick = async () => {
-        if (!supabase) return;
-        await supabase.auth.signOut();
-        refreshAuthUI();
-        setStatus("Logged out.");
-      };
-    }
-
-    if (supabase) {
+    if(supabase){
       supabase.auth.onAuthStateChange(() => refreshAuthUI());
       refreshAuthUI();
     }
 
-    async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
-      if (!supabase) return;
+    loginBtn?.addEventListener("click", async () => {
+      if(!supabase) return setStatus("Login not configured yet.");
+
+      const email = emailInput.value.trim();
+      if(!email) return setStatus("Enter an email to login.");
+
+      loginBtn.classList.add("loading");
+      loginBtn.disabled = true;
+      setStatus("Sending magic link...");
+
+      try{
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: "https://chrisvp5.github.io/VPwordle/" }
+        });
+        if(error){
+          setStatus("Login error: " + error.message, true);
+          return;
+        }
+        loginBtn.classList.remove("loading");
+        loginBtn.classList.add("success");
+        setTimeout(() => loginBtn.classList.remove("success"), 700);
+        setStatus("Magic link sent. Check your email.");
+      } finally {
+        loginBtn.classList.remove("loading");
+        loginBtn.disabled = false;
+      }
+    });
+
+    logoutBtn?.addEventListener("click", async () => {
+      if(!supabase) return;
+      await supabase.auth.signOut();
+      refreshAuthUI();
+      setStatus("Logged out.");
+    });
+
+    async function saveResultToSupabase({ puzzleId, guessesUsed, won }){
+      if(!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if(!user) return;
 
       await supabase.from("vpwordle_results").upsert({
         user_id: user.id,
@@ -375,11 +385,9 @@
       });
     }
 
-    /* ==================== WORDLE GAME ==================== */
+    // --------------------- WORDLE GAME ---------------------
     let solutions = [];
     let validGuesses = new Set();
-
-    // private answer in closure
     let _answer = "";
     const setAnswer = (w) => { _answer = w; };
 
@@ -392,44 +400,40 @@
     const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
     const keyState = {};
 
-    async function loadWordLists() {
-      try {
-        const base = window.location.href;
-
+    async function loadWordLists(){
+      try{
+        const base = window.location.origin + window.location.pathname; // no hash
         const solURL = new URL("solutions.txt", base);
         const guessURL = new URL("guesses.txt", base);
         solURL.searchParams.set("v", Date.now());
         guessURL.searchParams.set("v", Date.now());
 
         const [solRes, guessRes] = await Promise.all([
-          fetch(solURL, { cache: "no-store" }),
-          fetch(guessURL, { cache: "no-store" })
+          fetch(solURL, { cache:"no-store" }),
+          fetch(guessURL, { cache:"no-store" })
         ]);
 
-        if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
-        if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
+        if(!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
+        if(!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
 
         const solText = await solRes.text();
         const guessText = await guessRes.text();
 
-        solutions = solText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
-        const guessesArr = guessText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
+        solutions = solText.split(/\r?\n/).map(w=>w.trim().toLowerCase()).filter(w=>w.length===5);
+        const guessesArr = guessText.split(/\r?\n/).map(w=>w.trim().toLowerCase()).filter(w=>w.length===5);
 
         validGuesses = new Set([...solutions, ...guessesArr]);
+        if(!solutions.length || !validGuesses.size) throw new Error("Lists empty");
 
-        if (!solutions.length) throw new Error("solutions list empty");
-        if (!validGuesses.size) throw new Error("guess list empty");
-      } catch (err) {
+      }catch(err){
         console.error("Word list load failed:", err);
-
         solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
         validGuesses = new Set(solutions);
-
         setStatus("Could not load word lists, using fallback list.", true);
       }
     }
 
-    function getDailyIndex() {
+    function getDailyIndex(){
       const start = new Date("2021-06-19T00:00:00Z");
       const now = new Date();
       const utcToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
@@ -437,72 +441,70 @@
     }
     const getPuzzleId = () => getDailyIndex();
 
-    function pickAnswer() {
+    function pickAnswer(){
       const idx = getDailyIndex() % solutions.length;
       setAnswer(solutions[idx]);
     }
 
-    function saveState() {
+    function saveState(){
       localStorage.setItem("vpwordle_state", JSON.stringify({
         puzzleId:getPuzzleId(), guesses, currentRow, currentCol, isGameOver, keyState
       }));
     }
-
-    function loadState() {
+    function loadState(){
       const raw = localStorage.getItem("vpwordle_state");
-      if (!raw) return false;
-      try {
+      if(!raw) return false;
+      try{
         const state = JSON.parse(raw);
-        if (state.puzzleId !== getPuzzleId()) {
+        if(state.puzzleId !== getPuzzleId()){
           localStorage.removeItem("vpwordle_state");
           return false;
         }
-        for (let r=0;r<6;r++) for (let c=0;c<5;c++) guesses[r][c] = state.guesses?.[r]?.[c] || "";
+        for(let r=0;r<6;r++) for(let c=0;c<5;c++){
+          guesses[r][c] = state.guesses?.[r]?.[c] || "";
+        }
         currentRow = state.currentRow || 0;
         currentCol = state.currentCol || 0;
         isGameOver = !!state.isGameOver;
-
-        for (const k in keyState) delete keyState[k];
+        for(const k in keyState) delete keyState[k];
         Object.assign(keyState, state.keyState || {});
         return true;
-      } catch {
-        return false;
-      }
+      }catch{ return false; }
     }
 
-    function buildBoard() {
+    function buildBoard(){
       boardEl.innerHTML = "";
-      for (let r=0;r<6;r++) {
+      for(let r=0;r<6;r++){
         const row = document.createElement("div");
         row.className = "row";
-        for (let c=0;c<5;c++) {
-          const tile = document.createElement("div");
-          tile.className = "tile";
-          tile.id = `tile-${r}-${c}`;
+        for(let c=0;c<5;c++){
+          const tile=document.createElement("div");
+          tile.className="tile";
+          tile.id=`tile-${r}-${c}`;
           row.appendChild(tile);
         }
         boardEl.appendChild(row);
       }
     }
 
-    const KEY_LAYOUT = [
+    const KEY_LAYOUT=[
       ["q","w","e","r","t","y","u","i","o","p"],
       ["a","s","d","f","g","h","j","k","l"],
       ["enter","z","x","c","v","b","n","m","backspace"]
     ];
 
-    function buildKeyboard() {
-      keyboardEl.innerHTML = "";
-      KEY_LAYOUT.forEach(rowKeys => {
-        const row = document.createElement("div");
-        row.className = "keyrow";
-        rowKeys.forEach(k => {
-          const btn = document.createElement("button");
-          btn.className = "key";
-          btn.dataset.key = k;
-          btn.textContent = (k === "backspace") ? "⌫" : k;
-          if (k === "enter" || k === "backspace") btn.classList.add("wide");
-          btn.onclick = () => handleKey(k);
+    function buildKeyboard(){
+      keyboardEl.innerHTML="";
+      KEY_LAYOUT.forEach(rowKeys=>{
+        const row=document.createElement("div");
+        row.className="keyrow";
+        rowKeys.forEach(k=>{
+          const btn=document.createElement("button");
+          btn.className="key";
+          btn.dataset.key=k;
+          btn.textContent=(k==="backspace")?"⌫":k;
+          if(k==="enter"||k==="backspace") btn.classList.add("wide");
+          btn.onclick=()=>handleKey(k);
           row.appendChild(btn);
         });
         keyboardEl.appendChild(row);
@@ -510,16 +512,16 @@
     }
 
     function updateTile(r,c,letter){
-      const tile = document.getElementById(`tile-${r}-${c}`);
-      tile.textContent = letter;
-      if (letter) {
+      const tile=document.getElementById(`tile-${r}-${c}`);
+      tile.textContent=letter;
+      if(letter){
         tile.classList.add("pop");
         setTimeout(()=>tile.classList.remove("pop"),90);
       }
     }
 
     function paintRow(r,colours){
-      for (let c=0;c<5;c++) {
+      for(let c=0;c<5;c++){
         document.getElementById(`tile-${r}-${c}`).classList.add(colours[c]);
       }
     }
@@ -550,8 +552,7 @@
 
       for(let i=0;i<5;i++){
         if(g[i]===a[i]){
-          result[i]="green";
-          a[i]=null; g[i]=null;
+          result[i]="green"; a[i]=null; g[i]=null;
         }
       }
       for(let i=0;i<5;i++){
@@ -615,14 +616,22 @@
     }
 
     window.addEventListener("keydown",(e)=>{
-      if (typeof e.key !== "string") return;
+      if(typeof e.key!=="string") return;
       const k=e.key.toLowerCase();
       if(k==="enter"||k==="backspace"||/^[a-z]$/.test(k)) handleKey(k);
     });
 
-    async function startGame() {
-      await consumeHashSessionIfPresent();
+    // --------------------- START GAME (CLEAN) ---------------------
+    async function startGame(){
+      // 1) consume magic link hash if present
+      try{
+        const loggedInFromHash = await consumeHashSessionIfPresent();
+        if(loggedInFromHash) await refreshAuthUI();
+      }catch(err){
+        console.error(err);
+      }
 
+      // 2) game always loads regardless of auth
       setStatus("Loading word lists...");
       await loadWordLists();
 
@@ -632,40 +641,39 @@
 
       const restored = loadState();
 
-      if (restored) {
-        for (let r = 0; r < 6; r++) {
-          const guessStr = guesses[r].join("");
-          if (!guessStr) continue;
+      if(restored){
+        for(let r=0;r<6;r++){
+          const guessStr=guesses[r].join("");
+          if(!guessStr) continue;
 
-          for (let c = 0; c < 5; c++) updateTile(r, c, guesses[r][c]);
+          for(let c=0;c<5;c++) updateTile(r,c,guesses[r][c]);
 
-          if (r < currentRow) {
-            const colours = scoreGuess(guessStr);
-            paintRow(r, colours);
-            for (let i = 0; i < 5; i++) upgradeKeyState(guessStr[i], colours[i]);
+          if(r<currentRow){
+            const colours=scoreGuess(guessStr);
+            paintRow(r,colours);
+            for(let i=0;i<5;i++) upgradeKeyState(guessStr[i], colours[i]);
           }
         }
         repaintKeyboard();
 
-        if (isGameOver) {
-          const lastGuess = guesses[currentRow - 1]?.join("") || "";
-          if (lastGuess === _answer) setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+        if(isGameOver){
+          const lastGuess = guesses[currentRow-1]?.join("") || "";
+          if(lastGuess===_answer) setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
           else setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
-        } else {
+        }else{
           setStatus("");
         }
-      } else {
-        guesses.forEach(r => r.fill(""));
-        currentRow = 0; currentCol = 0; isGameOver = false;
-        for (const k in keyState) delete keyState[k];
+      }else{
+        guesses.forEach(r=>r.fill(""));
+        currentRow=0; currentCol=0; isGameOver=false;
+        for(const k in keyState) delete keyState[k];
         saveState();
         setStatus("");
       }
-
-      refreshAuthUI();
     }
 
     startGame();
+
   })();
   </script>
 </body>
