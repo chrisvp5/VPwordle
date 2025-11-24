@@ -161,7 +161,12 @@
     const email = emailInput.value.trim();
     if (!email) return setStatus("Enter an email to login.");
 
-    const { error } = await supabase.auth.signInWithOtp({ email });
+   const { error } = await supabase.auth.signInWithOtp({
+  email,
+  options: {
+    emailRedirectTo: window.location.origin + window.location.pathname
+  }
+});
     if (error) return setStatus("Login error: " + error.message, true);
 
     setStatus("Check your email for a login link.");
@@ -559,4 +564,5 @@
 </script>
 </body>
 </html>
+
 
