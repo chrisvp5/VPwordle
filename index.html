@@ -305,83 +305,104 @@
   const SUPABASE_URL = "https://ruenrertnvhyglbwhqpc.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_3jLPUT8TNCr-gJtrA5rPFg_A11cxx2G";
 
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let supabase = null;
 
-  const emailInput = document.getElementById("emailInput");
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
+const emailInput = document.getElementById("emailInput");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const authBox = document.getElementById("authBox");
 
-  function setStatus(msg, solid=false) {
-    const statusEl = document.getElementById("status");
-    statusEl.textContent = msg;
-    statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
+// only initialise Supabase if keys look real
+try {
+  const urlLooksReal = SUPABASE_URL.startsWith("https://") && SUPABASE_URL.includes(".supabase.co");
+  const keyLooksReal = SUPABASE_ANON_KEY.startsWith("sb_publishable_") || SUPABASE_ANON_KEY.startsWith("eyJ");
+
+  if (urlLooksReal && keyLooksReal && window.supabase) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    // hide login if not configured yet
+    authBox.style.display = "none";
+    console.warn("Supabase not configured. Game will still run.");
   }
+} catch (e) {
+  authBox.style.display = "none";
+  console.error("Supabase init failed, continuing without login:", e);
+}
 
-  async function refreshAuthUI() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      loginBtn.style.display = "none";
-      emailInput.style.display = "none";
-      logoutBtn.style.display = "inline-block";
-      setStatus("Logged in as " + user.email);
-    } else {
-      loginBtn.style.display = "inline-flex";
-      emailInput.style.display = "inline-block";
-      logoutBtn.style.display = "none";
-    }
+// auth UI only if supabase is alive
+async function refreshAuthUI() {
+  if (!supabase) return;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    loginBtn.style.display = "none";
+    emailInput.style.display = "none";
+    logoutBtn.style.display = "inline-block";
+    setStatus("Logged in as " + user.email);
+  } else {
+    loginBtn.style.display = "inline-flex";
+    emailInput.style.display = "inline-block";
+    logoutBtn.style.display = "none";
   }
+}
 
-  loginBtn.onclick = async () => {
-    const email = emailInput.value.trim();
-    if (!email) return setStatus("Enter an email to login.");
+loginBtn.onclick = async () => {
+  if (!supabase) return setStatus("Login not configured yet.");
 
-    loginBtn.classList.add("loading");
-    loginBtn.disabled = true;
-    setStatus("Sending magic link...");
+  const email = emailInput.value.trim();
+  if (!email) return setStatus("Enter an email to login.");
 
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin + window.location.pathname
-        }
-      });
+  loginBtn.classList.add("loading");
+  loginBtn.disabled = true;
+  setStatus("Sending magic link...");
 
-      if (error) {
-        setStatus("Login error: " + error.message, true);
-        return;
+  try {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname
       }
-
-      loginBtn.classList.remove("loading");
-      loginBtn.classList.add("success");
-      setTimeout(() => loginBtn.classList.remove("success"), 700);
-
-      setStatus("Magic link sent. Check your email.");
-    } finally {
-      loginBtn.classList.remove("loading");
-      loginBtn.disabled = false;
-    }
-  };
-
-  logoutBtn.onclick = async () => {
-    await supabase.auth.signOut();
-    refreshAuthUI();
-    setStatus("Logged out.");
-  };
-
-  supabase.auth.onAuthStateChange(() => refreshAuthUI());
-
-  async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    await supabase.from("vpwordle_results").upsert({
-      user_id: user.id,
-      puzzle_id: puzzleId,
-      guesses_used: guessesUsed,
-      won
     });
+
+    if (error) {
+      setStatus("Login error: " + error.message, true);
+      return;
+    }
+
+    loginBtn.classList.remove("loading");
+    loginBtn.classList.add("success");
+    setTimeout(() => loginBtn.classList.remove("success"), 700);
+
+    setStatus("Magic link sent. Check your email.");
+  } finally {
+    loginBtn.classList.remove("loading");
+    loginBtn.disabled = false;
   }
+};
+
+logoutBtn.onclick = async () => {
+  if (!supabase) return;
+  await supabase.auth.signOut();
+  refreshAuthUI();
+  setStatus("Logged out.");
+};
+
+if (supabase) {
+  supabase.auth.onAuthStateChange(() => refreshAuthUI());
+}
+
+async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
+  if (!supabase) return;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase.from("vpwordle_results").upsert({
+    user_id: user.id,
+    puzzle_id: puzzleId,
+    guesses_used: guessesUsed,
+    won
+  });
+}
 
   // ==================== PRIVATE GAME DATA ====================
   let solutions = [];
@@ -721,6 +742,7 @@
 </script>
 </body>
 </html>
+
 
 
 
