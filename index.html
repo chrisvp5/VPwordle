@@ -289,6 +289,24 @@
 (() => {
   "use strict";
 
+  // ===== Always show JS errors on screen (so nothing fails silently) =====
+  function setStatus(msg, solid=false) {
+    const statusEl = document.getElementById("status");
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
+  }
+
+  window.addEventListener("error", (e) => {
+    setStatus("JS error: " + e.message, true);
+    console.error(e);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const msg = e.reason?.message || String(e.reason);
+    setStatus("Async error: " + msg, true);
+    console.error(e);
+  });
+
   // ===== Loader control =====
   const vpLoader = document.getElementById("vpLoader");
   const gameWrapper = document.getElementById("gameWrapper");
@@ -301,108 +319,102 @@
   }
   setTimeout(hideLoader, 5500);
 
-  // ==================== SUPABASE SETUP ====================
+  // ==================== SUPABASE SETUP (SAFE) ====================
   const SUPABASE_URL = "https://ruenrertnvhyglbwhqpc.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_3jLPUT8TNCr-gJtrA5rPFg_A11cxx2G";
 
   let supabase = null;
 
-const emailInput = document.getElementById("emailInput");
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-const authBox = document.getElementById("authBox");
-
-// only initialise Supabase if keys look real
-try {
-  const urlLooksReal = SUPABASE_URL.startsWith("https://") && SUPABASE_URL.includes(".supabase.co");
-  const keyLooksReal = SUPABASE_ANON_KEY.startsWith("sb_publishable_") || SUPABASE_ANON_KEY.startsWith("eyJ");
-
-  if (urlLooksReal && keyLooksReal && window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  } else {
-    // hide login if not configured yet
-    authBox.style.display = "none";
-    console.warn("Supabase not configured. Game will still run.");
-  }
-} catch (e) {
-  authBox.style.display = "none";
-  console.error("Supabase init failed, continuing without login:", e);
-}
-
-// auth UI only if supabase is alive
-async function refreshAuthUI() {
-  if (!supabase) return;
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    loginBtn.style.display = "none";
-    emailInput.style.display = "none";
-    logoutBtn.style.display = "inline-block";
-    setStatus("Logged in as " + user.email);
-  } else {
-    loginBtn.style.display = "inline-flex";
-    emailInput.style.display = "inline-block";
-    logoutBtn.style.display = "none";
-  }
-}
-
-loginBtn.onclick = async () => {
-  if (!supabase) return setStatus("Login not configured yet.");
-
-  const email = emailInput.value.trim();
-  if (!email) return setStatus("Enter an email to login.");
-
-  loginBtn.classList.add("loading");
-  loginBtn.disabled = true;
-  setStatus("Sending magic link...");
+  const emailInput = document.getElementById("emailInput");
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const authBox = document.getElementById("authBox");
 
   try {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin + window.location.pathname
-      }
-    });
+    const urlLooksReal = SUPABASE_URL.startsWith("https://") && SUPABASE_URL.includes(".supabase.co");
+    const keyLooksReal = SUPABASE_ANON_KEY.startsWith("sb_publishable_") || SUPABASE_ANON_KEY.startsWith("eyJ");
 
-    if (error) {
-      setStatus("Login error: " + error.message, true);
-      return;
+    if (urlLooksReal && keyLooksReal && window.supabase) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+      authBox.style.display = "none";
+      console.warn("Supabase not configured. Game will still run.");
     }
-
-    loginBtn.classList.remove("loading");
-    loginBtn.classList.add("success");
-    setTimeout(() => loginBtn.classList.remove("success"), 700);
-
-    setStatus("Magic link sent. Check your email.");
-  } finally {
-    loginBtn.classList.remove("loading");
-    loginBtn.disabled = false;
+  } catch (e) {
+    authBox.style.display = "none";
+    console.error("Supabase init failed, continuing without login:", e);
   }
-};
 
-logoutBtn.onclick = async () => {
-  if (!supabase) return;
-  await supabase.auth.signOut();
-  refreshAuthUI();
-  setStatus("Logged out.");
-};
+  async function refreshAuthUI() {
+    if (!supabase) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      loginBtn.style.display = "none";
+      emailInput.style.display = "none";
+      logoutBtn.style.display = "inline-block";
+      setStatus("Logged in as " + user.email);
+    } else {
+      loginBtn.style.display = "inline-flex";
+      emailInput.style.display = "inline-block";
+      logoutBtn.style.display = "none";
+    }
+  }
 
-if (supabase) {
-  supabase.auth.onAuthStateChange(() => refreshAuthUI());
-}
+  loginBtn.onclick = async () => {
+    if (!supabase) return setStatus("Login not configured yet.");
 
-async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
-  if (!supabase) return;
+    const email = emailInput.value.trim();
+    if (!email) return setStatus("Enter an email to login.");
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+    loginBtn.classList.add("loading");
+    loginBtn.disabled = true;
+    setStatus("Sending magic link...");
 
-  await supabase.from("vpwordle_results").upsert({
-    user_id: user.id,
-    puzzle_id: puzzleId,
-    guesses_used: guessesUsed,
-    won
-  });
-}
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin + window.location.pathname
+        }
+      });
+
+      if (error) {
+        setStatus("Login error: " + error.message, true);
+        return;
+      }
+
+      loginBtn.classList.remove("loading");
+      loginBtn.classList.add("success");
+      setTimeout(() => loginBtn.classList.remove("success"), 700);
+
+      setStatus("Magic link sent. Check your email.");
+    } finally {
+      loginBtn.classList.remove("loading");
+      loginBtn.disabled = false;
+    }
+  };
+
+  logoutBtn.onclick = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    refreshAuthUI();
+    setStatus("Logged out.");
+  };
+
+  if (supabase) supabase.auth.onAuthStateChange(() => refreshAuthUI());
+
+  async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
+    if (!supabase) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase.from("vpwordle_results").upsert({
+      user_id: user.id,
+      puzzle_id: puzzleId,
+      guesses_used: guessesUsed,
+      won
+    });
+  }
 
   // ==================== PRIVATE GAME DATA ====================
   let solutions = [];
@@ -411,67 +423,51 @@ async function saveResultToSupabase({ puzzleId, guessesUsed, won }) {
   let _answer = "";
   const setAnswer = (w) => { _answer = w; };
 
-  // ==================== DOM ====================
   const boardEl = document.getElementById("board");
   const keyboardEl = document.getElementById("keyboard");
 
-  // ==================== STATE ====================
   let currentRow = 0;
   let currentCol = 0;
   let isGameOver = false;
   const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
   const keyState = {};
 
-  // ==================== WORD LISTS ====================
-async function loadWordLists() {
-  // absolute base to your GitHub Pages folder
-  const base = window.location.origin + "/VPwordle/";
+  // ==================== WORD LISTS (ROCK SOLID + FALLBACK) ====================
+  async function loadWordLists() {
+    const base = window.location.origin + "/VPwordle/";
+    const solURL = base + "solutions.txt?v=" + Date.now();
+    const guessURL = base + "guesses.txt?v=" + Date.now();
 
-  const solURL = base + "solutions.txt?v=" + Date.now();
-  const guessURL = base + "guesses.txt?v=" + Date.now();
+    try {
+      const [solRes, guessRes] = await Promise.all([
+        fetch(solURL, { cache: "no-store" }),
+        fetch(guessURL, { cache: "no-store" })
+      ]);
 
-  try {
-    const [solRes, guessRes] = await Promise.all([
-      fetch(solURL, { cache: "no-store" }),
-      fetch(guessURL, { cache: "no-store" })
-    ]);
+      if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
+      if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
 
-    if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
-    if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
+      const solText = await solRes.text();
+      const guessText = await guessRes.text();
 
-    const solText = await solRes.text();
-    const guessText = await guessRes.text();
+      solutions = solText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
+      const guessesArr = guessText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
 
-    solutions = solText
-      .split(/\r?\n/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length === 5);
+      validGuesses = new Set([...solutions, ...guessesArr]);
 
-    const guessesArr = guessText
-      .split(/\r?\n/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length === 5);
-
-    validGuesses = new Set([...solutions, ...guessesArr]);
-
-    if (solutions.length === 0 || validGuesses.size === 0) {
-      throw new Error("Word lists loaded but were empty.");
+      if (solutions.length === 0 || validGuesses.size === 0) {
+        throw new Error("Word lists loaded but were empty.");
+      }
+    } catch (err) {
+      console.error("Word list load failed:", err);
+      solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
+      validGuesses = new Set(solutions);
+      setStatus(
+        "Could not load solutions.txt / guesses.txt, using fallback list.",
+        true
+      );
     }
-
-  } catch (err) {
-    // ✅ FALLBACK LIST so the game still loads
-    console.error("Word list load failed:", err);
-
-    solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
-    validGuesses = new Set(solutions);
-
-    setStatus(
-      "Could not load solutions.txt / guesses.txt from GitHub Pages, using fallback list. " +
-      "Check file paths and that GitHub Pages is serving the txt files.",
-      true
-    );
   }
-}
 
   function getDailyIndex() {
     const start = new Date("2021-06-19T00:00:00Z");
@@ -479,13 +475,12 @@ async function loadWordLists() {
     const utcToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     return Math.floor((utcToday - start) / (1000*60*60*24));
   }
-  function getPuzzleId(){ return getDailyIndex(); }
+  const getPuzzleId = () => getDailyIndex();
 
   function getAnswerFromURL() {
     const params = new URLSearchParams(window.location.search);
     const w = (params.get("word") || "").toLowerCase();
-    if (w && w.length === 5) return w;
-    return null;
+    return (w && w.length === 5) ? w : null;
   }
 
   function pickAnswer() {
@@ -498,55 +493,36 @@ async function loadWordLists() {
     setAnswer(solutions[idx]);
   }
 
-  // ==================== LOCAL SAVE / RESTORE ====================
   function saveState() {
-    const state = {
-      puzzleId: getPuzzleId(),
-      guesses,
-      currentRow,
-      currentCol,
-      isGameOver,
-      keyState
-    };
+    const state = { puzzleId:getPuzzleId(), guesses, currentRow, currentCol, isGameOver, keyState };
     localStorage.setItem("vpwordle_state", JSON.stringify(state));
   }
 
   function loadState() {
     const raw = localStorage.getItem("vpwordle_state");
     if (!raw) return false;
-
     try {
       const state = JSON.parse(raw);
       if (state.puzzleId !== getPuzzleId()) {
         localStorage.removeItem("vpwordle_state");
         return false;
       }
-
-      for (let r = 0; r < 6; r++) {
-        for (let c = 0; c < 5; c++) {
-          guesses[r][c] = state.guesses?.[r]?.[c] || "";
-        }
-      }
+      for (let r=0;r<6;r++) for (let c=0;c<5;c++) guesses[r][c] = state.guesses?.[r]?.[c] || "";
       currentRow = state.currentRow || 0;
       currentCol = state.currentCol || 0;
       isGameOver = !!state.isGameOver;
-
       for (const k in keyState) delete keyState[k];
       Object.assign(keyState, state.keyState || {});
-
       return true;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
 
-  // ==================== UI BUILD ====================
   function buildBoard() {
     boardEl.innerHTML = "";
-    for (let r = 0; r < 6; r++) {
+    for (let r=0;r<6;r++) {
       const row = document.createElement("div");
       row.className = "row";
-      for (let c = 0; c < 5; c++) {
+      for (let c=0;c<5;c++) {
         const tile = document.createElement("div");
         tile.className = "tile";
         tile.id = `tile-${r}-${c}`;
@@ -571,7 +547,7 @@ async function loadWordLists() {
         const btn = document.createElement("button");
         btn.className = "key";
         btn.dataset.key = k;
-        btn.textContent = k === "backspace" ? "⌫" : k;
+        btn.textContent = (k === "backspace") ? "⌫" : k;
         if (k === "enter" || k === "backspace") btn.classList.add("wide");
         btn.onclick = () => handleKey(k);
         row.appendChild(btn);
@@ -580,185 +556,150 @@ async function loadWordLists() {
     });
   }
 
-  function updateTile(r, c, letter) {
+  function updateTile(r,c,letter){
     const tile = document.getElementById(`tile-${r}-${c}`);
     tile.textContent = letter;
     if (letter) {
       tile.classList.add("pop");
-      setTimeout(() => tile.classList.remove("pop"), 90);
+      setTimeout(()=>tile.classList.remove("pop"),90);
     }
   }
 
-  function paintRow(r, colours) {
-    for (let c = 0; c < 5; c++) {
+  function paintRow(r,colours){
+    for (let c=0;c<5;c++) {
       document.getElementById(`tile-${r}-${c}`).classList.add(colours[c]);
     }
   }
 
-  function upgradeKeyState(letter, newState) {
-    const rank = { unknown:0, grey:1, yellow:2, green:3 };
-    const old = keyState[letter] || "unknown";
-    if (rank[newState] > rank[old]) keyState[letter] = newState;
+  function upgradeKeyState(letter,newState){
+    const rank={unknown:0,grey:1,yellow:2,green:3};
+    const old=keyState[letter]||"unknown";
+    if(rank[newState]>rank[old]) keyState[letter]=newState;
   }
 
-  function repaintKeyboard() {
-    document.querySelectorAll("button.key").forEach(btn => {
-      const k = btn.dataset.key;
-      btn.classList.remove("green", "yellow", "grey", "disabled");
-      if (k.length === 1) {
-        const st = keyState[k] || "unknown";
-        if (st !== "unknown") btn.classList.add(st);
-        if (st === "grey") btn.classList.add("disabled");
+  function repaintKeyboard(){
+    document.querySelectorAll("button.key").forEach(btn=>{
+      const k=btn.dataset.key;
+      btn.classList.remove("green","yellow","grey","disabled");
+      if(k.length===1){
+        const st=keyState[k]||"unknown";
+        if(st!=="unknown") btn.classList.add(st);
+        if(st==="grey") btn.classList.add("disabled");
       }
     });
   }
 
-  // ==================== SCORING ====================
-  function scoreGuess(guess) {
-    const answer = _answer;
-    const result = Array(5).fill("grey");
-    const a = answer.split("");
-    const g = guess.split("");
+  function scoreGuess(guess){
+    const answer=_answer;
+    const result=Array(5).fill("grey");
+    const a=answer.split("");
+    const g=guess.split("");
 
-    for (let i = 0; i < 5; i++) {
-      if (g[i] === a[i]) {
-        result[i] = "green";
-        a[i] = null;
-        g[i] = null;
+    for(let i=0;i<5;i++){
+      if(g[i]===a[i]){
+        result[i]="green";
+        a[i]=null; g[i]=null;
       }
     }
-    for (let i = 0; i < 5; i++) {
-      if (g[i] && a.includes(g[i])) {
-        result[i] = "yellow";
-        a[a.indexOf(g[i])] = null;
+    for(let i=0;i<5;i++){
+      if(g[i] && a.includes(g[i])){
+        result[i]="yellow";
+        a[a.indexOf(g[i])]=null;
       }
     }
     return result;
   }
 
-  // ==================== INPUT ====================
-  function handleKey(key) {
-    if (isGameOver) return;
+  function handleKey(key){
+    if(isGameOver) return;
 
-    if (key === "enter") {
-      const guess = guesses[currentRow].join("");
-      if (guess.length < 5) return setStatus("Not enough letters.");
-      if (!validGuesses.has(guess)) return setStatus("Not in word list.");
+    if(key==="enter"){
+      const guess=guesses[currentRow].join("");
+      if(guess.length<5) return setStatus("Not enough letters.");
+      if(!validGuesses.has(guess)) return setStatus("Not in word list.");
 
-      const colours = scoreGuess(guess);
-      paintRow(currentRow, colours);
+      const colours=scoreGuess(guess);
+      paintRow(currentRow,colours);
 
-      for (let i = 0; i < 5; i++) upgradeKeyState(guess[i], colours[i]);
+      for(let i=0;i<5;i++) upgradeKeyState(guess[i],colours[i]);
       repaintKeyboard();
-
       saveState();
 
-      if (guess === _answer) {
-        isGameOver = true;
-        saveState();
-
-        saveResultToSupabase({
-          puzzleId: getPuzzleId(),
-          guessesUsed: currentRow + 1,
-          won: true
-        });
-
-        return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+      if(guess===_answer){
+        isGameOver=true; saveState();
+        saveResultToSupabase({ puzzleId:getPuzzleId(), guessesUsed:currentRow+1, won:true });
+        return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`,true);
       }
 
-      currentRow++;
-      currentCol = 0;
+      currentRow++; currentCol=0;
 
-      if (currentRow === 6) {
-        isGameOver = true;
-        saveState();
-
-        saveResultToSupabase({
-          puzzleId: getPuzzleId(),
-          guessesUsed: 6,
-          won: false
-        });
-
-        return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+      if(currentRow===6){
+        isGameOver=true; saveState();
+        saveResultToSupabase({ puzzleId:getPuzzleId(), guessesUsed:6, won:false });
+        return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`,true);
       }
 
       setStatus("");
       return;
     }
 
-    if (key === "backspace") {
-      if (currentCol > 0) {
+    if(key==="backspace"){
+      if(currentCol>0){
         currentCol--;
-        guesses[currentRow][currentCol] = "";
-        updateTile(currentRow, currentCol, "");
+        guesses[currentRow][currentCol]="";
+        updateTile(currentRow,currentCol,"");
       }
       return;
     }
 
-    if (/^[a-z]$/.test(key)) {
-      if (currentCol < 5) {
-        guesses[currentRow][currentCol] = key;
-        updateTile(currentRow, currentCol, key);
+    if(/^[a-z]$/.test(key)){
+      if(currentCol<5){
+        guesses[currentRow][currentCol]=key;
+        updateTile(currentRow,currentCol,key);
         currentCol++;
       }
     }
   }
 
-  window.addEventListener("keydown", (e) => {
-    const k = e.key.toLowerCase();
-    if (k === "enter" || k === "backspace" || /^[a-z]$/.test(k)) handleKey(k);
+  window.addEventListener("keydown",(e)=>{
+    const k=e.key.toLowerCase();
+    if(k==="enter"||k==="backspace"||/^[a-z]$/.test(k)) handleKey(k);
   });
 
-  // ==================== INIT ====================
-  async function startGame() {
-    try {
-      setStatus("Loading word lists...");
-      await loadWordLists();
+  async function startGame(){
+    setStatus("Loading word lists...");
+    await loadWordLists();
 
-      pickAnswer();
-      buildBoard();
-      buildKeyboard();
+    pickAnswer();
+    buildBoard();
+    buildKeyboard();
 
-      const restored = loadState();
+    const restored=loadState();
+    if(restored){
+      for(let r=0;r<6;r++){
+        const guessStr=guesses[r].join("");
+        if(!guessStr) continue;
 
-      if (restored) {
-        for (let r = 0; r < 6; r++) {
-          const guessStr = guesses[r].join("");
-          if (!guessStr) continue;
-
-          for (let c = 0; c < 5; c++) updateTile(r, c, guesses[r][c]);
-
-          if (r < currentRow) {
-            const colours = scoreGuess(guessStr);
-            paintRow(r, colours);
-          }
+        for(let c=0;c<5;c++) updateTile(r,c,guesses[r][c]);
+        if(r<currentRow){
+          const colours=scoreGuess(guessStr);
+          paintRow(r,colours);
         }
-        repaintKeyboard();
-
-        if (isGameOver) {
-          const lastGuess = guesses[currentRow - 1]?.join("") || "";
-          if (lastGuess === _answer) {
-            setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
-          } else {
-            setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
-          }
-        } else {
-          setStatus("");
-        }
-      } else {
-        guesses.forEach(r => r.fill(""));
-        currentRow = 0;
-        currentCol = 0;
-        isGameOver = false;
-        for (const k in keyState) delete keyState[k];
-        saveState();
-        setStatus("");
       }
-
-      refreshAuthUI();
-    } catch (err) {
-      setStatus("Failed to start game. Check word lists.", true);
+      repaintKeyboard();
+      if(isGameOver){
+        const lastGuess=guesses[currentRow-1]?.join("")||"";
+        if(lastGuess===_answer) setStatus(`You got it. The word was ${_answer.toUpperCase()}.`,true);
+        else setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`,true);
+      } else setStatus("");
+    } else {
+      guesses.forEach(r=>r.fill(""));
+      currentRow=0; currentCol=0; isGameOver=false;
+      for(const k in keyState) delete keyState[k];
+      saveState(); setStatus("");
     }
+
+    refreshAuthUI();
   }
 
   startGame();
@@ -766,6 +707,7 @@ async function loadWordLists() {
 </script>
 </body>
 </html>
+
 
 
 
