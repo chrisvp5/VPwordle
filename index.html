@@ -450,34 +450,55 @@ async function consumeMagicLinkSessionIfPresent() {
     const keyState = {};
 
     async function loadWordLists() {
-      const base = window.location.origin + "/VPwordle/";
-      const solURL = base + "solutions.txt?v=" + Date.now();
-      const guessURL = base + "guesses.txt?v=" + Date.now();
+  try {
+    const base = window.location.href;  // ✅ always correct on GH Pages
 
-      try {
-        const [solRes, guessRes] = await Promise.all([
-          fetch(solURL, { cache: "no-store" }),
-          fetch(guessURL, { cache: "no-store" })
-        ]);
+    const solURL = new URL("solutions.txt", base);
+    const guessURL = new URL("guesses.txt", base);
 
-        if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
-        if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
+    // cache busting
+    solURL.searchParams.set("v", Date.now());
+    guessURL.searchParams.set("v", Date.now());
 
-        const solText = await solRes.text();
-        const guessText = await guessRes.text();
+    const [solRes, guessRes] = await Promise.all([
+      fetch(solURL, { cache: "no-store" }),
+      fetch(guessURL, { cache: "no-store" }),
+    ]);
 
-        solutions = solText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
-        const guessesArr = guessText.split(/\r?\n/).map(w => w.trim().toLowerCase()).filter(w => w.length === 5);
+    if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
+    if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
 
-        validGuesses = new Set([...solutions, ...guessesArr]);
-        if (!solutions.length || !validGuesses.size) throw new Error("Lists empty");
-      } catch (err) {
-        console.error(err);
-        solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
-        validGuesses = new Set(solutions);
-        setStatus("Could not load word lists, using fallback list.", true);
-      }
-    }
+    const solText = await solRes.text();
+    const guessText = await guessRes.text();
+
+    solutions = solText
+      .split(/\r?\n/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
+
+    const guessesArr = guessText
+      .split(/\r?\n/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
+
+    validGuesses = new Set([...solutions, ...guessesArr]);
+
+    if (!solutions.length) throw new Error("solutions list empty");
+    if (!validGuesses.size) throw new Error("guess list empty");
+  } catch (err) {
+    console.error("Word list load failed:", err);
+
+    // ✅ fallback so game still loads
+    solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
+    validGuesses = new Set(solutions);
+
+    setStatus(
+      "Could not load word lists from GitHub Pages, using fallback list.",
+      true
+    );
+  }
+}
+
 
     function getDailyIndex() {
       const start = new Date("2021-06-19T00:00:00Z");
@@ -666,17 +687,15 @@ async function consumeMagicLinkSessionIfPresent() {
       if(k==="enter"||k==="backspace"||/^[a-z]$/.test(k)) handleKey(k);
     });
 
-   async function startGame() {
-  // 1) If we came from a magic link, force-consume hash tokens first
-  await consumeHashSessionIfPresent();
+    async function startGame() {
+      try {
+        await consumeHashSessionIfPresent();
+        setStatus("Loading word lists...");
+        await loadWordLists();
 
-  // 2) Load your word lists + build game
-  setStatus("Loading word lists...");
-  await loadWordLists();
-
-  pickAnswer();
-  buildBoard();
-  buildKeyboard();
+    pickAnswer();
+    buildBoard();
+    buildKeyboard();
 
   // 3) Restore saved progress if same daily puzzle
   const restored = loadState();
@@ -774,6 +793,7 @@ async function consumeHashSessionIfPresent() {
   </script>
 </body>
 </html>
+
 
 
 
