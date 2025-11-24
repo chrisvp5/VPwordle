@@ -276,6 +276,50 @@
             detectSessionInUrl: true   // ✅ THIS is the key fix
           }
         });
+      // ✅ Wait for Supabase to process magic link URL, then refresh UI
+async function consumeMagicLinkSessionIfPresent() {
+  if (!supabase) return;
+
+  const hasCode = window.location.search.includes("code=");
+  const hasHashTokens =
+    window.location.hash.includes("access_token") ||
+    window.location.hash.includes("refresh_token");
+
+  if (!hasCode && !hasHashTokens) return;
+
+  // Give Supabase a moment to auto-detect from URL
+  await new Promise(r => setTimeout(r, 300));
+
+  // If auto-detect didn't work and we have a code, try exchange manually
+  if (hasCode && supabase.auth.exchangeCodeForSession) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+    if (code) {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        console.error("exchangeCodeForSession failed:", error);
+        setStatus("Login failed. Try again.", true);
+        return;
+      }
+      if (data?.session) {
+        setStatus("Logged in successfully.", true);
+      }
+    }
+  }
+
+  // Now check session
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session?.user) {
+    await refreshAuthUI();
+
+    // ✅ ONLY clean URL after session is confirmed
+    history.replaceState({}, document.title, window.location.pathname);
+  } else {
+    // show a useful message instead of silent fail
+    setStatus("Login link opened, but no session was created. Check redirect URLs.", true);
+  }
+}
       } else {
         authBox.style.display = "none";
       }
@@ -584,34 +628,73 @@
       if(k==="enter"||k==="backspace"||/^[a-z]$/.test(k)) handleKey(k);
     });
 
-    async function startGame(){
-      setStatus("Loading word lists...");
-      await loadWordLists();
-      pickAnswer();
-      buildBoard();
-      buildKeyboard();
+   async function startGame() {
+  // 1) If we came from a magic link, let Supabase consume it first
+  await consumeMagicLinkSessionIfPresent();
 
-      const restored=loadState();
-      if(restored){
-        for(let r=0;r<6;r++){
-          const guessStr=guesses[r].join("");
-          if(!guessStr) continue;
-          for(let c=0;c<5;c++) updateTile(r,c,guesses[r][c]);
-          if(r<currentRow){
-            paintRow(r, scoreGuess(guessStr));
-          }
-        }
-        repaintKeyboard();
-      } else {
-        saveState();
+  // 2) Load your word lists + build game
+  setStatus("Loading word lists...");
+  await loadWordLists();
+
+  pickAnswer();
+  buildBoard();
+  buildKeyboard();
+
+  // 3) Restore saved progress if same daily puzzle
+  const restored = loadState();
+
+  if (restored) {
+    for (let r = 0; r < 6; r++) {
+      const guessStr = guesses[r].join("");
+      if (!guessStr) continue;
+
+      // paint letters back in
+      for (let c = 0; c < 5; c++) {
+        updateTile(r, c, guesses[r][c]);
       }
 
-      setStatus("");
-      refreshAuthUI();
+      // paint colours for completed rows
+      if (r < currentRow) {
+        const colours = scoreGuess(guessStr);
+        paintRow(r, colours);
+        for (let i = 0; i < 5; i++) {
+          upgradeKeyState(guessStr[i], colours[i]);
+        }
+      }
     }
+
+    repaintKeyboard();
+
+    // if game was already finished, show final message
+    if (isGameOver) {
+      const lastGuess = guesses[currentRow - 1]?.join("") || "";
+      if (lastGuess === _answer) {
+        setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+      } else {
+        setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+      }
+    } else {
+      setStatus("");
+    }
+  } else {
+    // fresh puzzle state
+    guesses.forEach(r => r.fill(""));
+    currentRow = 0;
+    currentCol = 0;
+    isGameOver = false;
+    for (const k in keyState) delete keyState[k];
+    saveState();
+    setStatus("");
+  }
+
+  // 4) Finally, refresh login UI
+  refreshAuthUI();
+}
+
 
     startGame();
   })();
   </script>
 </body>
 </html>
+
