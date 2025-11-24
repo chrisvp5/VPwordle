@@ -400,38 +400,52 @@
     const guesses = Array.from({ length: 6 }, () => Array(5).fill(""));
     const keyState = {};
 
-    async function loadWordLists(){
-      try{
-        const base = window.location.origin + window.location.pathname; // no hash
-        const solURL = new URL("solutions.txt", base);
-        const guessURL = new URL("guesses.txt", base);
-        solURL.searchParams.set("v", Date.now());
-        guessURL.searchParams.set("v", Date.now());
+async function loadWordLists() {
+  try {
+    // ✅ Force correct GitHub Pages folder base no matter what Supabase redirects to
+    const repoBase = window.location.origin + "/VPwordle/";
 
-        const [solRes, guessRes] = await Promise.all([
-          fetch(solURL, { cache:"no-store" }),
-          fetch(guessURL, { cache:"no-store" })
-        ]);
+    const solURL = repoBase + "solutions.txt?v=" + Date.now();
+    const guessURL = repoBase + "guesses.txt?v=" + Date.now();
 
-        if(!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
-        if(!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
+    const [solRes, guessRes] = await Promise.all([
+      fetch(solURL, { cache: "no-store" }),
+      fetch(guessURL, { cache: "no-store" })
+    ]);
 
-        const solText = await solRes.text();
-        const guessText = await guessRes.text();
+    if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
+    if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
 
-        solutions = solText.split(/\r?\n/).map(w=>w.trim().toLowerCase()).filter(w=>w.length===5);
-        const guessesArr = guessText.split(/\r?\n/).map(w=>w.trim().toLowerCase()).filter(w=>w.length===5);
+    const solText = await solRes.text();
+    const guessText = await guessRes.text();
 
-        validGuesses = new Set([...solutions, ...guessesArr]);
-        if(!solutions.length || !validGuesses.size) throw new Error("Lists empty");
+    solutions = solText
+      .split(/\r?\n/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
 
-      }catch(err){
-        console.error("Word list load failed:", err);
-        solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
-        validGuesses = new Set(solutions);
-        setStatus("Could not load word lists, using fallback list.", true);
-      }
+    const guessesArr = guessText
+      .split(/\r?\n/)
+      .map(w => w.trim().toLowerCase())
+      .filter(w => w.length === 5);
+
+    validGuesses = new Set([...solutions, ...guessesArr]);
+
+    if (!solutions.length || !validGuesses.size) {
+      throw new Error("Word lists loaded but empty.");
     }
+
+  } catch (err) {
+    console.error("Word list load failed:", err);
+
+    // ✅ fallback so board still appears
+    solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
+    validGuesses = new Set(solutions);
+
+    setStatus("Could not load word lists, using fallback list.", true);
+  }
+}
+
 
     function getDailyIndex(){
       const start = new Date("2021-06-19T00:00:00Z");
@@ -678,3 +692,4 @@
   </script>
 </body>
 </html>
+
