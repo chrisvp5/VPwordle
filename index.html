@@ -204,6 +204,69 @@
       display:flex; flex-direction:column; align-items:center; gap:12px;
     }
     .game-wrapper.show{ opacity:1; }
+
+    /* SCOREBOARD */
+    .scoreboard{
+      width:min(96vw, 520px);
+      margin-top:12px;
+      background:#141722;
+      border:1px solid #262a36;
+      border-radius:12px;
+      padding:10px 10px 8px;
+      font-size:12px;
+    }
+    .scoreboard-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:6px;
+      color:var(--muted);
+    }
+    .scoreboard-title{
+      font-weight:700;
+      font-size:13px;
+      letter-spacing:0.5px;
+      text-transform:uppercase;
+    }
+    .scoreboard-week{
+      font-size:11px;
+      opacity:0.8;
+    }
+    .scoreboard table{
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+      font-size:11px;
+    }
+    .scoreboard th,
+    .scoreboard td{
+      border-bottom:1px solid #252a37;
+      padding:4px 2px;
+      text-align:center;
+    }
+    .scoreboard th:first-child,
+    .scoreboard td:first-child{
+      text-align:left;
+      padding-left:4px;
+      font-weight:600;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:120px;
+    }
+    .scoreboard th{
+      color:var(--muted);
+      font-weight:600;
+    }
+    .scoreboard td{
+      color:#cfd3e1;
+    }
+    .score-empty{
+      text-align:center;
+      font-size:11px;
+      color:var(--muted);
+      padding:4px 0 2px;
+    }
   </style>
 </head>
 <body>
@@ -243,6 +306,17 @@
     <div class="auth-note">
       <span>Login is optional. If you login, your results are saved.</span>
       <button id="toggleModeBtn">Need an account? Create one</button>
+    </div>
+
+    <!-- SCOREBOARD -->
+    <div id="scoreboard" class="scoreboard">
+      <div class="scoreboard-header">
+        <div class="scoreboard-title">This Week's Scores</div>
+        <div id="scoreboardWeekLabel" class="scoreboard-week"></div>
+      </div>
+      <div id="scoreboardContent" class="scoreboard-content score-empty">
+        Loading scoreboard...
+      </div>
     </div>
 
     <div id="keyboard" class="keyboard"></div>
@@ -295,6 +369,9 @@
     const authBox = document.getElementById("authBox");
     const toggleModeBtn = document.getElementById("toggleModeBtn");
 
+    const scoreboardContent = document.getElementById("scoreboardContent");
+    const scoreboardWeekLabel = document.getElementById("scoreboardWeekLabel");
+
     // "login" or "signup"
     let authMode = "login";
 
@@ -315,7 +392,7 @@
       const { data:{ user } } = await supabase.auth.getUser();
       if(user){
         if (loginBtn) loginBtn.style.display = "none";
-        if (emailInput) emailInput.style.display = "none";
+        if (emailInput) emailInput.style.display = "inline-block"; // keep visible but disabled if you want
         if (passwordInput) passwordInput.style.display = "none";
         if (logoutBtn) logoutBtn.style.display = "inline-block";
         if (toggleModeBtn) toggleModeBtn.style.display = "none";
@@ -370,19 +447,23 @@
 
         try {
           if (authMode === "signup") {
-            const { data, error } = await supabase.auth.signUp({ email, password });
+            const { data, error } = await supabase.auth.signUp({
+              email,
+              password
+              // If you want email confirmation redirect:
+              // options: { emailRedirectTo: "https://chrisvp5.github.io/VPwordle/" }
+            });
 
             if (error) {
               setStatus("Signup error: " + error.message, true);
               return;
             }
 
-            // If email confirmations are off, user will be present
             if (data.user) {
               await refreshAuthUI();
               setStatus("Account created and logged in as " + data.user.email, true);
+              await loadScoreboard();
             } else {
-              // If confirmations are on
               setStatus("Account created. Check your email to confirm.", true);
             }
           } else {
@@ -395,6 +476,7 @@
 
             await refreshAuthUI();
             setStatus("Logged in as " + (data.user?.email || email), true);
+            await loadScoreboard();
           }
         } finally {
           loginBtn.classList.remove("loading");
@@ -403,59 +485,208 @@
       };
     }
 
-if (logoutBtn) {
-  logoutBtn.onclick = async () => {
-    if (!supabase) {
-      setStatus("Logout not configured.", true);
-      return;
+    if (logoutBtn) {
+      logoutBtn.onclick = async () => {
+        if (!supabase) {
+          setStatus("Logout not configured.", true);
+          return;
+        }
+
+        logoutBtn.disabled = true;
+        setStatus("Logging out...");
+
+        try {
+          const { error } = await supabase.auth.signOut();
+
+          if (error) {
+            console.error("Logout error:", error);
+            setStatus("Logout error: " + error.message, true);
+            return;
+          }
+
+          authMode = "login";
+
+          if (loginBtn) {
+            const txt = loginBtn.querySelector(".btn-text");
+            if (txt) txt.textContent = "Login";
+            loginBtn.style.display = "inline-flex";
+          }
+          if (emailInput) {
+            emailInput.style.display = "inline-block";
+            // keep the email if you want, or clear:
+            // emailInput.value = "";
+          }
+          if (passwordInput) {
+            passwordInput.style.display = "inline-block";
+            passwordInput.value = "";
+          }
+          if (toggleModeBtn) {
+            toggleModeBtn.style.display = "inline-block";
+            toggleModeBtn.textContent = "Need an account? Create one";
+          }
+          if (logoutBtn) {
+            logoutBtn.style.display = "none";
+          }
+
+          await refreshAuthUI();
+          setStatus("Logged out.", true);
+          await loadScoreboard();
+        } finally {
+          logoutBtn.disabled = false;
+        }
+      };
     }
 
-    logoutBtn.disabled = true;
-    setStatus("Logging out...");
+    if(supabase){
+      supabase.auth.onAuthStateChange(() => {
+        refreshAuthUI();
+        loadScoreboard();
+      });
+    }
 
-    try {
-      const { error } = await supabase.auth.signOut();
+    // -------------------- PUZZLE ID HELPERS --------------------
+    function getDailyIndex(){
+      const start = new Date("2021-06-19T00:00:00Z");
+      const now = new Date();
+      const utcToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      return Math.floor((utcToday - start) / (1000*60*60*24));
+    }
+    const getPuzzleId = () => getDailyIndex();
+
+    // Monday-based week, using UTC day (0 = Mon .. 6 = Sun)
+    function getWeekInfo(){
+      const todayId = getDailyIndex();
+      const now = new Date();
+      const weekdayUTC = now.getUTCDay(); // 0=Sun..6=Sat
+      const mondayIndex = (weekdayUTC + 6) % 7; // 0=Mon..6=Sun
+
+      const weekIds = [];
+      for (let offset = 0; offset < 7; offset++) {
+        weekIds.push(todayId - mondayIndex + offset);
+      }
+
+      // Build week label dates (for display)
+      const todayUTC = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate()
+      ));
+      const mondayDate = new Date(todayUTC);
+      mondayDate.setUTCDate(mondayDate.getUTCDate() - mondayIndex);
+      const sundayDate = new Date(mondayDate);
+      sundayDate.setUTCDate(sundayDate.getUTCDate() + 6);
+
+      return { weekIds, mondayDate, sundayDate };
+    }
+
+    const WEEKDAY_LABELS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+    // -------------------- SCOREBOARD --------------------
+    async function loadScoreboard(){
+      if (!supabase || !scoreboardContent) return;
+
+      const { weekIds, mondayDate, sundayDate } = getWeekInfo();
+
+      // Set week label (e.g., 3–9 Mar)
+      if (scoreboardWeekLabel) {
+        const fmt = (d) =>
+          d.getUTCDate().toString().padStart(2,"0") + "/" +
+          (d.getUTCMonth()+1).toString().padStart(2,"0");
+        scoreboardWeekLabel.textContent = `${fmt(mondayDate)} – ${fmt(sundayDate)}`;
+      }
+
+      scoreboardContent.textContent = "Loading scoreboard...";
+
+      const { data, error } = await supabase
+        .from("vpwordle_results")
+        .select("user_id, user_email, puzzle_id, guesses_used, won")
+        .in("puzzle_id", weekIds)
+        .order("user_email", { ascending: true });
 
       if (error) {
-        console.error("Logout error:", error);
-        setStatus("Logout error: " + error.message, true);
+        console.error("Scoreboard error:", error);
+        scoreboardContent.textContent = "Could not load scoreboard.";
         return;
       }
 
-      // Reset auth mode and UI back to login state
-      authMode = "login";
-
-      if (loginBtn) {
-        const txt = loginBtn.querySelector(".btn-text");
-        if (txt) txt.textContent = "Login";
-        loginBtn.style.display = "inline-flex";
-      }
-      if (emailInput) {
-        emailInput.style.display = "inline-block";
-        emailInput.value = "";
-      }
-      if (passwordInput) {
-        passwordInput.style.display = "inline-block";
-        passwordInput.value = "";
-      }
-      if (toggleModeBtn) {
-        toggleModeBtn.style.display = "inline-block";
-        toggleModeBtn.textContent = "Need an account? Create one";
-      }
-      if (logoutBtn) {
-        logoutBtn.style.display = "none";
+      if (!data || !data.length) {
+        scoreboardContent.textContent = "No games played this week yet.";
+        scoreboardContent.className = "scoreboard-content score-empty";
+        return;
       }
 
-      await refreshAuthUI();
-      setStatus("Logged out.", true);
-    } finally {
-      logoutBtn.disabled = false;
-    }
-  };
-}
+      // Build user -> [7-day scores]
+      const byUser = {};
+      data.forEach(row => {
+        const email = row.user_email || row.user_id || "Unknown";
+        if (!byUser[email]) {
+          byUser[email] = {
+            email,
+            scores: Array(7).fill(null)
+          };
+        }
+        const dayIndex = weekIds.indexOf(row.puzzle_id);
+        if (dayIndex === -1) return;
 
-    if(supabase){
-      supabase.auth.onAuthStateChange(() => refreshAuthUI());
+        const val = row.won ? row.guesses_used : "X";
+        const existing = byUser[email].scores[dayIndex];
+
+        // If multiple entries for same day, keep the best (lowest guesses or a win over "X")
+        if (existing == null) {
+          byUser[email].scores[dayIndex] = val;
+        } else if (typeof val === "number" && (typeof existing !== "number" || val < existing)) {
+          byUser[email].scores[dayIndex] = val;
+        }
+      });
+
+      const users = Object.values(byUser);
+      if (!users.length) {
+        scoreboardContent.textContent = "No games played this week yet.";
+        scoreboardContent.className = "scoreboard-content score-empty";
+        return;
+      }
+
+      // Build table
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+
+      const thName = document.createElement("th");
+      thName.textContent = "Player";
+      headerRow.appendChild(thName);
+
+      WEEKDAY_LABELS.forEach(label => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      users.forEach(u => {
+        const tr = document.createElement("tr");
+        const nameCell = document.createElement("td");
+        nameCell.textContent = u.email;
+        tr.appendChild(nameCell);
+
+        u.scores.forEach(val => {
+          const td = document.createElement("td");
+          if (val == null) {
+            td.textContent = "-";
+            td.style.opacity = "0.5";
+          } else {
+            td.textContent = val;
+          }
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      scoreboardContent.className = "scoreboard-content";
+      scoreboardContent.innerHTML = "";
+      scoreboardContent.appendChild(table);
     }
 
     async function saveResultToSupabase({ puzzleId, guessesUsed, won }){
@@ -465,10 +696,13 @@ if (logoutBtn) {
 
       await supabase.from("vpwordle_results").upsert({
         user_id: user.id,
+        user_email: user.email,
         puzzle_id: puzzleId,
         guesses_used: guessesUsed,
         won
       });
+
+      await loadScoreboard();
     }
 
     // -------------------- PRIVATE GAME DATA --------------------
@@ -521,14 +755,6 @@ if (logoutBtn) {
         setStatus("Could not load word lists, using fallback list.", true);
       }
     }
-
-    function getDailyIndex(){
-      const start = new Date("2021-06-19T00:00:00Z");
-      const now = new Date();
-      const utcToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      return Math.floor((utcToday - start) / (1000*60*60*24));
-    }
-    const getPuzzleId = () => getDailyIndex();
 
     function pickAnswer(){
       const idx = getDailyIndex() % solutions.length;
@@ -772,11 +998,14 @@ if (logoutBtn) {
       }
     }
 
-    // Boot: auth UI then game, then hide loader
+    // Boot: auth UI, game, and scoreboard, then hide loader
     window.addEventListener("DOMContentLoaded", async () => {
       try{
         await refreshAuthUI();
         await startGame();
+        if (supabase) {
+          await loadScoreboard();
+        }
       } catch(e){
         console.error("Boot error:", e);
       } finally {
@@ -788,4 +1017,3 @@ if (logoutBtn) {
   </script>
 </body>
 </html>
-
