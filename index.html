@@ -83,10 +83,11 @@
       align-items:center;
       justify-content:center;
       margin-top:2px;
+      flex-wrap:wrap;
     }
     .auth-panel input{
       flex:1;
-      min-width:140px;
+      min-width:180px;
       padding:8px 10px;
       border-radius:8px;
       border:1px solid #333845;
@@ -106,7 +107,7 @@
     .auth-panel button:hover{ filter:brightness(1.08); }
     .auth-note{ font-size:12px; color:var(--muted); text-align:center; margin-top:-4px; }
 
-    /* Cool login button */
+    /* Cool login button states */
     .auth-btn{
       position: relative;
       display: inline-flex;
@@ -189,7 +190,7 @@
   <div id="vpLoader" class="vp-loader">
     <div class="vp-loader-inner">
       <img
-        src="sandbox:/mnt/data/Copy of Jay Recycle .png"
+        src="https://github.com/chrisvp5/VPwordle/blob/main/Copy%20of%20Jay%20Recycle%20.png?raw=true"
         alt="VP Loader"
         class="vp-loader-img"
       />
@@ -228,148 +229,163 @@
   (() => {
     "use strict";
 
-    /* ------------------ STATUS ------------------ */
+    // -------------------- STATUS + ERROR SURFACE --------------------
     const statusEl = document.getElementById("status");
     function setStatus(msg, solid=false){
-      if (!statusEl) return;
+      if(!statusEl) return;
       statusEl.textContent = msg;
       statusEl.style.color = solid ? "var(--text)" : "var(--muted)";
     }
 
-    /* ------------------ LOADER ------------------ */
+    window.addEventListener("error", (e) => {
+      setStatus("JS error: " + e.message, true);
+      console.error(e);
+    });
+    window.addEventListener("unhandledrejection", (e) => {
+      const msg = e.reason?.message || String(e.reason);
+      setStatus("Async error: " + msg, true);
+      console.error(e);
+    });
+
+    // -------------------- LOADER --------------------
     const vpLoader = document.getElementById("vpLoader");
     const gameWrapper = document.getElementById("gameWrapper");
-
     function hideLoader(){
-      if (!vpLoader) return;
+      if(!vpLoader) return;
       vpLoader.classList.add("hide");
       gameWrapper.classList.add("show");
-      setTimeout(() => vpLoader.remove(), 800);
+      setTimeout(()=>vpLoader.remove(), 800);
     }
-
-    const comingFromMagicLink =
+    const returningFromLogin =
       window.location.hash.includes("access_token") ||
-      window.location.hash.includes("refresh_token") ||
       window.location.search.includes("code=");
+    setTimeout(hideLoader, returningFromLogin ? 300 : 5500);
 
-    setTimeout(hideLoader, comingFromMagicLink ? 300 : 5500);
-
-    /* ------------------ SUPABASE ------------------ */
+    // -------------------- SUPABASE INIT --------------------
     const SUPABASE_URL = "https://ruenrertnvhyglbwhqpc.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_3jLPUT8TNCr-gJtrA5rPFg_A11cxx2G";
 
     const emailInput = document.getElementById("emailInput");
-    const loginBtn   = document.getElementById("loginBtn");
-    const logoutBtn  = document.getElementById("logoutBtn");
-    const authBox    = document.getElementById("authBox");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const authBox = document.getElementById("authBox");
 
     let supabase = null;
-
-    // Create client once, early, and DO NOT auto-detect URL on GH Pages.
-    try {
-      if (window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth: { persistSession:true, detectSessionInUrl:false }
-        });
-      } else {
-        authBox.style.display = "none";
-      }
-    } catch(e){
-      console.error(e);
-      authBox.style.display = "none";
-    }
-
-    async function consumeHashSessionIfPresent(){
-      if (!supabase) return false;
-
-      const rawHash = window.location.hash || "";
-      if (!rawHash.includes("access_token") || !rawHash.includes("refresh_token")) return false;
-
-      const params = new URLSearchParams(rawHash.replace(/^#/, ""));
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
-      const error_description = params.get("error_description");
-
-      if (error_description){
-        setStatus("Login link error: " + decodeURIComponent(error_description), true);
-        return false;
-      }
-
-      if (!access_token || !refresh_token) return false;
-
-      const { data, error } = await supabase.auth.setSession({
-        access_token, refresh_token
+    if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY){
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          detectSessionInUrl: false   // we manually consume hash below
+        }
       });
-
-      if (error){
-        console.error("setSession failed:", error);
-        setStatus("Login failed. Try again.", true);
-        return false;
-      }
-
-      history.replaceState({}, document.title, window.location.pathname);
-      return !!data?.session?.user;
+    } else {
+      authBox.style.display = "none";
+      console.warn("Supabase not available, running without login.");
     }
 
     async function refreshAuthUI(){
-      if (!supabase) return;
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user){
+      if(!supabase) return;
+      const { data:{ user } } = await supabase.auth.getUser();
+      if(user){
         loginBtn.style.display = "none";
         emailInput.style.display = "none";
         logoutBtn.style.display = "inline-block";
         setStatus("Logged in as " + user.email);
-      } else {
+      }else{
         loginBtn.style.display = "inline-flex";
         emailInput.style.display = "inline-block";
         logoutBtn.style.display = "none";
       }
     }
 
-    loginBtn.onclick = async () => {
-      if (!supabase) return setStatus("Login not configured yet.");
-      const email = emailInput.value.trim();
-      if (!email) return setStatus("Enter an email to login.");
+    // ---- Manual consume for GH Pages magic link (#access_token=...) ----
+    async function consumeHashSessionIfPresent(){
+      if(!supabase) return false;
 
-      loginBtn.classList.add("loading");
-      loginBtn.disabled = true;
-      setStatus("Sending magic link...");
-
-      try{
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options:{
-            emailRedirectTo: "https://chrisvp5.github.io/VPwordle/"
-          }
-        });
-        if (error) {
-          setStatus("Login error: " + error.message, true);
-          return;
-        }
-        loginBtn.classList.remove("loading");
-        loginBtn.classList.add("success");
-        setTimeout(()=>loginBtn.classList.remove("success"), 700);
-        setStatus("Magic link sent. Check your email.");
-      } finally {
-        loginBtn.classList.remove("loading");
-        loginBtn.disabled = false;
+      const rawHash = window.location.hash || "";
+      if(!rawHash.includes("access_token") || !rawHash.includes("refresh_token")){
+        return false;
       }
-    };
 
-    logoutBtn.onclick = async () => {
-      if (!supabase) return;
-      await supabase.auth.signOut();
-      await refreshAuthUI();
-      setStatus("Logged out.");
-    };
+      const params = new URLSearchParams(rawHash.replace(/^#/, ""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const error_description = params.get("error_description");
 
-    supabase?.auth.onAuthStateChange(() => refreshAuthUI());
+      if(error_description){
+        setStatus("Login link error: " + decodeURIComponent(error_description), true);
+        return false;
+      }
+      if(!access_token || !refresh_token) return false;
+
+      const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if(error){
+        console.error("setSession failed:", error);
+        setStatus("Login failed. Try again.", true);
+        return false;
+      }
+
+      if(data?.session?.user){
+        history.replaceState({}, document.title, window.location.pathname);
+        await refreshAuthUI();
+        setStatus("Logged in successfully.", true);
+        return true;
+      }
+      return false;
+    }
+
+    // ---- Login button ----
+    if(loginBtn){
+      loginBtn.onclick = async ()=>{
+        if(!supabase) return setStatus("Login not configured yet.");
+
+        const email = emailInput.value.trim();
+        if(!email) return setStatus("Enter an email to login.");
+
+        loginBtn.classList.add("loading");
+        loginBtn.disabled = true;
+        setStatus("Sending magic link...");
+
+        try{
+          const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options:{
+              emailRedirectTo: "https://chrisvp5.github.io/VPwordle/"
+            }
+          });
+          if(error){
+            setStatus("Login error: " + error.message, true);
+            return;
+          }
+
+          loginBtn.classList.remove("loading");
+          loginBtn.classList.add("success");
+          setTimeout(()=>loginBtn.classList.remove("success"), 700);
+          setStatus("Magic link sent. Check your email.");
+        } finally {
+          loginBtn.classList.remove("loading");
+          loginBtn.disabled = false;
+        }
+      };
+    }
+
+    if(logoutBtn){
+      logoutBtn.onclick = async ()=>{
+        if(!supabase) return;
+        await supabase.auth.signOut();
+        await refreshAuthUI();
+        setStatus("Logged out.");
+      };
+    }
+
+    if(supabase){
+      supabase.auth.onAuthStateChange(() => refreshAuthUI());
+    }
 
     async function saveResultToSupabase({ puzzleId, guessesUsed, won }){
-      if (!supabase) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if(!supabase) return;
+      const { data:{ user } } = await supabase.auth.getUser();
+      if(!user) return;
 
       await supabase.from("vpwordle_results").upsert({
         user_id: user.id,
@@ -379,10 +395,10 @@
       });
     }
 
-    /* ------------------ WORDLE GAME ------------------ */
+    // -------------------- PRIVATE GAME DATA --------------------
     let solutions = [];
     let validGuesses = new Set();
-    let _answer = "";
+    let _answer = "";           // private in closure
     const setAnswer = (w) => { _answer = w; };
 
     const boardEl = document.getElementById("board");
@@ -391,9 +407,10 @@
     let currentRow = 0;
     let currentCol = 0;
     let isGameOver = false;
-    const guesses = Array.from({length:6}, () => Array(5).fill(""));
+    const guesses = Array.from({length:6}, ()=>Array(5).fill(""));
     const keyState = {}; // unknown | grey | yellow | green
 
+    // -------------------- WORD LISTS --------------------
     async function loadWordLists(){
       try{
         const base = window.location.href;
@@ -407,8 +424,8 @@
           fetch(guessURL, {cache:"no-store"})
         ]);
 
-        if (!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
-        if (!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
+        if(!solRes.ok) throw new Error("solutions.txt HTTP " + solRes.status);
+        if(!guessRes.ok) throw new Error("guesses.txt HTTP " + guessRes.status);
 
         const solText = await solRes.text();
         const guessText = await guessRes.text();
@@ -418,10 +435,11 @@
 
         validGuesses = new Set([...solutions, ...guessesArr]);
 
-        if (!solutions.length || !validGuesses.size) throw new Error("Lists empty");
-
+        if(!solutions.length || !validGuesses.size){
+          throw new Error("Word lists loaded empty.");
+        }
       } catch(err){
-        console.error(err);
+        console.error("Word list load failed:", err);
         solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
         validGuesses = new Set(solutions);
         setStatus("Could not load word lists, using fallback list.", true);
@@ -441,48 +459,45 @@
       setAnswer(solutions[idx]);
     }
 
+    // -------------------- LOCAL SAVE / RESTORE --------------------
     function saveState(){
       localStorage.setItem("vpwordle_state", JSON.stringify({
-        puzzleId:getPuzzleId(),
-        guesses,
-        currentRow,
-        currentCol,
-        isGameOver,
-        keyState
+        puzzleId:getPuzzleId(), guesses, currentRow, currentCol, isGameOver, keyState
       }));
     }
 
     function loadState(){
       const raw = localStorage.getItem("vpwordle_state");
-      if (!raw) return false;
+      if(!raw) return false;
       try{
         const state = JSON.parse(raw);
-        if (state.puzzleId !== getPuzzleId()){
+        if(state.puzzleId !== getPuzzleId()){
           localStorage.removeItem("vpwordle_state");
           return false;
         }
-        for (let r=0;r<6;r++){
-          for (let c=0;c<5;c++){
+        for(let r=0;r<6;r++){
+          for(let c=0;c<5;c++){
             guesses[r][c] = state.guesses?.[r]?.[c] || "";
           }
         }
         currentRow = state.currentRow || 0;
         currentCol = state.currentCol || 0;
         isGameOver = !!state.isGameOver;
-        for (const k in keyState) delete keyState[k];
+        for(const k in keyState) delete keyState[k];
         Object.assign(keyState, state.keyState || {});
         return true;
-      } catch{
+      } catch {
         return false;
       }
     }
 
+    // -------------------- UI BUILD --------------------
     function buildBoard(){
       boardEl.innerHTML = "";
-      for (let r=0;r<6;r++){
+      for(let r=0;r<6;r++){
         const row = document.createElement("div");
         row.className = "row";
-        for (let c=0;c<5;c++){
+        for(let c=0;c<5;c++){
           const tile = document.createElement("div");
           tile.className = "tile";
           tile.id = `tile-${r}-${c}`;
@@ -501,15 +516,15 @@
     function buildKeyboard(){
       keyboardEl.innerHTML = "";
       KEY_LAYOUT.forEach(rowKeys=>{
-        const row=document.createElement("div");
-        row.className="keyrow";
+        const row = document.createElement("div");
+        row.className = "keyrow";
         rowKeys.forEach(k=>{
-          const btn=document.createElement("button");
-          btn.className="key";
-          btn.dataset.key=k;
-          btn.textContent=(k==="backspace")?"⌫":k;
+          const btn = document.createElement("button");
+          btn.className = "key";
+          btn.dataset.key = k;
+          btn.textContent = (k==="backspace") ? "⌫" : k;
           if(k==="enter"||k==="backspace") btn.classList.add("wide");
-          btn.onclick=()=>handleKey(k);
+          btn.onclick = () => handleKey(k);
           row.appendChild(btn);
         });
         keyboardEl.appendChild(row);
@@ -517,11 +532,11 @@
     }
 
     function updateTile(r,c,letter){
-      const tile=document.getElementById(`tile-${r}-${c}`);
-      tile.textContent=letter;
+      const tile = document.getElementById(`tile-${r}-${c}`);
+      tile.textContent = letter;
       if(letter){
         tile.classList.add("pop");
-        setTimeout(()=>tile.classList.remove("pop"),90);
+        setTimeout(()=>tile.classList.remove("pop"), 90);
       }
     }
 
@@ -549,18 +564,21 @@
       });
     }
 
+    // -------------------- SCORING --------------------
     function scoreGuess(guess){
       const answer=_answer;
       const result=Array(5).fill("grey");
       const a=answer.split("");
       const g=guess.split("");
 
+      // greens
       for(let i=0;i<5;i++){
         if(g[i]===a[i]){
           result[i]="green";
           a[i]=null; g[i]=null;
         }
       }
+      // yellows
       for(let i=0;i<5;i++){
         if(g[i] && a.includes(g[i])){
           result[i]="yellow";
@@ -570,6 +588,7 @@
       return result;
     }
 
+    // -------------------- INPUT --------------------
     function handleKey(key){
       if(isGameOver) return;
 
@@ -581,14 +600,14 @@
         const colours=scoreGuess(guess);
         paintRow(currentRow,colours);
 
-        for(let i=0;i<5;i++) upgradeKeyState(guess[i],colours[i]);
+        for(let i=0;i<5;i++) upgradeKeyState(guess[i], colours[i]);
         repaintKeyboard();
         saveState();
 
         if(guess===_answer){
           isGameOver=true; saveState();
           saveResultToSupabase({ puzzleId:getPuzzleId(), guessesUsed:currentRow+1, won:true });
-          return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`,true);
+          return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
         }
 
         currentRow++; currentCol=0;
@@ -596,7 +615,7 @@
         if(currentRow===6){
           isGameOver=true; saveState();
           saveResultToSupabase({ puzzleId:getPuzzleId(), guessesUsed:6, won:false });
-          return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`,true);
+          return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
         }
 
         setStatus("");
@@ -608,6 +627,7 @@
           currentCol--;
           guesses[currentRow][currentCol]="";
           updateTile(currentRow,currentCol,"");
+          saveState();
         }
         return;
       }
@@ -617,25 +637,19 @@
           guesses[currentRow][currentCol]=key;
           updateTile(currentRow,currentCol,key);
           currentCol++;
+          saveState();
         }
       }
     }
 
     window.addEventListener("keydown",(e)=>{
-      if (typeof e.key !== "string") return;
+      if(typeof e.key!=="string") return;
       const k=e.key.toLowerCase();
       if(k==="enter"||k==="backspace"||/^[a-z]$/.test(k)) handleKey(k);
     });
 
-    /* ------------------ BOOT SEQUENCE ------------------ */
-    async function boot(){
-      // 1) consume magic link tokens if present
-      if (supabase) {
-        await consumeHashSessionIfPresent();
-        await refreshAuthUI();
-      }
-
-      // 2) load game regardless of auth
+    // -------------------- STARTUP --------------------
+    async function startGame(){
       setStatus("Loading word lists...");
       await loadWordLists();
 
@@ -643,10 +657,10 @@
       buildBoard();
       buildKeyboard();
 
-      const restored = loadState();
+      const restored=loadState();
 
-      if (restored){
-        for (let r=0;r<6;r++){
+      if(restored){
+        for(let r=0;r<6;r++){
           const guessStr=guesses[r].join("");
           if(!guessStr) continue;
 
@@ -655,7 +669,6 @@
           if(r<currentRow){
             const colours=scoreGuess(guessStr);
             paintRow(r,colours);
-            for(let i=0;i<5;i++) upgradeKeyState(guessStr[i], colours[i]);
           }
         }
         repaintKeyboard();
@@ -679,7 +692,19 @@
       }
     }
 
-    window.addEventListener("DOMContentLoaded", boot);
+    // Boot order: consume login -> refresh UI -> start game
+    window.addEventListener("DOMContentLoaded", async ()=>{
+      try{
+        await consumeHashSessionIfPresent();
+        await refreshAuthUI();
+      } catch(e){
+        console.error("Auth boot error:", e);
+      } finally {
+        // ALWAYS start game even if auth fails
+        await startGame();
+      }
+    });
+
   })();
   </script>
 </body>
