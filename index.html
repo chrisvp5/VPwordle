@@ -403,14 +403,56 @@
       };
     }
 
-    if(logoutBtn){
-      logoutBtn.onclick = async () => {
-        if(!supabase) return;
-        await supabase.auth.signOut();
-        await refreshAuthUI();
-        setStatus("Logged out.");
-      };
+if (logoutBtn) {
+  logoutBtn.onclick = async () => {
+    if (!supabase) {
+      setStatus("Logout not configured.", true);
+      return;
     }
+
+    logoutBtn.disabled = true;
+    setStatus("Logging out...");
+
+    try {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        console.error("Logout error:", error);
+        setStatus("Logout error: " + error.message, true);
+        return;
+      }
+
+      // Reset auth mode and UI back to login state
+      authMode = "login";
+
+      if (loginBtn) {
+        const txt = loginBtn.querySelector(".btn-text");
+        if (txt) txt.textContent = "Login";
+        loginBtn.style.display = "inline-flex";
+      }
+      if (emailInput) {
+        emailInput.style.display = "inline-block";
+        emailInput.value = "";
+      }
+      if (passwordInput) {
+        passwordInput.style.display = "inline-block";
+        passwordInput.value = "";
+      }
+      if (toggleModeBtn) {
+        toggleModeBtn.style.display = "inline-block";
+        toggleModeBtn.textContent = "Need an account? Create one";
+      }
+      if (logoutBtn) {
+        logoutBtn.style.display = "none";
+      }
+
+      await refreshAuthUI();
+      setStatus("Logged out.", true);
+    } finally {
+      logoutBtn.disabled = false;
+    }
+  };
+}
 
     if(supabase){
       supabase.auth.onAuthStateChange(() => refreshAuthUI());
@@ -746,3 +788,4 @@
   </script>
 </body>
 </html>
+
