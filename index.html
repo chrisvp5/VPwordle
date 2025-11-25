@@ -87,7 +87,7 @@
     }
     .auth-panel input{
       flex:1;
-      min-width:160px;
+      min-width:150px;
       padding:8px 10px;
       border-radius:8px;
       border:1px solid #333845;
@@ -105,7 +105,29 @@
       color:var(--text);
     }
     .auth-panel button:hover{ filter:brightness(1.08); }
-    .auth-note{ font-size:12px; color:var(--muted); text-align:center; margin-top:-4px; }
+    .auth-note{
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+      margin-top:-4px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:4px;
+    }
+    .auth-note button{
+      border:none;
+      background:none;
+      color:var(--muted);
+      font-size:11px;
+      cursor:pointer;
+      text-decoration:underline;
+      padding:0;
+      opacity:0.85;
+    }
+    .auth-note button:hover{
+      opacity:1;
+    }
 
     /* Cool login button states */
     .auth-btn{
@@ -208,6 +230,7 @@
     <div id="board" class="board"></div>
     <div id="status" class="status"></div>
 
+    <!-- AUTH PANEL -->
     <div class="auth-panel" id="authBox">
       <input id="emailInput" type="email" placeholder="Email" />
       <input id="passwordInput" type="password" placeholder="Password" />
@@ -217,7 +240,10 @@
       </button>
       <button id="logoutBtn" style="display:none;">Logout</button>
     </div>
-    <div class="auth-note">Login is optional. If you login, your result is saved.</div>
+    <div class="auth-note">
+      <span>Login is optional. If you login, your results are saved.</span>
+      <button id="toggleModeBtn">Need an account? Create one</button>
+    </div>
 
     <div id="keyboard" class="keyboard"></div>
     <div class="footer">Physical keyboard supported.</div>
@@ -267,6 +293,10 @@
     const loginBtn = document.getElementById("loginBtn");
     const logoutBtn = document.getElementById("logoutBtn");
     const authBox = document.getElementById("authBox");
+    const toggleModeBtn = document.getElementById("toggleModeBtn");
+
+    // "login" or "signup"
+    let authMode = "login";
 
     let supabase = null;
     if (window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY){
@@ -288,22 +318,47 @@
         if (emailInput) emailInput.style.display = "none";
         if (passwordInput) passwordInput.style.display = "none";
         if (logoutBtn) logoutBtn.style.display = "inline-block";
+        if (toggleModeBtn) toggleModeBtn.style.display = "none";
         setStatus("Logged in as " + user.email);
       } else {
         if (loginBtn) loginBtn.style.display = "inline-flex";
         if (emailInput) emailInput.style.display = "inline-block";
         if (passwordInput) passwordInput.style.display = "inline-block";
         if (logoutBtn) logoutBtn.style.display = "none";
+        if (toggleModeBtn) toggleModeBtn.style.display = "inline-block";
       }
     }
 
-    // ---- Login button (email + password) ----
+    // ---- Toggle between Login and Signup modes ----
+    if (toggleModeBtn) {
+      toggleModeBtn.onclick = () => {
+        if (authMode === "login") {
+          authMode = "signup";
+          toggleModeBtn.textContent = "Already have an account? Login";
+          if (loginBtn) {
+            const txt = loginBtn.querySelector(".btn-text");
+            if (txt) txt.textContent = "Create account";
+          }
+          setStatus("Enter email and password to create an account.");
+        } else {
+          authMode = "login";
+          toggleModeBtn.textContent = "Need an account? Create one";
+          if (loginBtn) {
+            const txt = loginBtn.querySelector(".btn-text");
+            if (txt) txt.textContent = "Login";
+          }
+          setStatus("");
+        }
+      };
+    }
+
+    // ---- Login / Signup button ----
     if(loginBtn){
       loginBtn.onclick = async () => {
         if(!supabase) return setStatus("Login not configured yet.");
 
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
+        const email = (emailInput?.value || "").trim();
+        const password = passwordInput?.value || "";
 
         if(!email || !password){
           return setStatus("Enter email and password.");
@@ -311,21 +366,36 @@
 
         loginBtn.classList.add("loading");
         loginBtn.disabled = true;
-        setStatus("Logging in...");
+        setStatus(authMode === "signup" ? "Creating account..." : "Logging in...");
 
         try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
+          if (authMode === "signup") {
+            const { data, error } = await supabase.auth.signUp({ email, password });
 
-          if(error){
-            setStatus("Login error: " + error.message, true);
-            return;
+            if (error) {
+              setStatus("Signup error: " + error.message, true);
+              return;
+            }
+
+            // If email confirmations are off, user will be present
+            if (data.user) {
+              await refreshAuthUI();
+              setStatus("Account created and logged in as " + data.user.email, true);
+            } else {
+              // If confirmations are on
+              setStatus("Account created. Check your email to confirm.", true);
+            }
+          } else {
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+            if (error) {
+              setStatus("Login error: " + error.message, true);
+              return;
+            }
+
+            await refreshAuthUI();
+            setStatus("Logged in as " + (data.user?.email || email), true);
           }
-
-          await refreshAuthUI();
-          setStatus("Logged in as " + (data.user?.email || email), true);
         } finally {
           loginBtn.classList.remove("loading");
           loginBtn.disabled = false;
