@@ -73,7 +73,7 @@
 
     /* Auth panel */
     .auth-panel{
-      width:min(92vw, 520px);
+      width:min(92vw, 380px);
       background:var(--panel);
       border:1px solid var(--panel-border);
       border-radius:12px;
@@ -129,7 +129,7 @@
       opacity:1;
     }
 
-    /* Cool login button states */
+    /* Auth button states */
     .auth-btn{
       position: relative;
       display: inline-flex;
@@ -199,16 +199,50 @@
     @keyframes vpGlow{ 0%,100%{ filter:none; } 50%{ filter: drop-shadow(0 0 12px rgba(154,215,255,0.55)); } }
     @keyframes dotBounce{ 0%,100%{ transform: translateY(0); opacity:.4; } 50%{ transform: translateY(-4px); opacity:1; } }
 
+    /* Layout */
     .game-wrapper{
-      opacity:0; transition: opacity 600ms ease; width:100%;
-      display:flex; flex-direction:column; align-items:center; gap:12px;
+      opacity:0;
+      transition: opacity 600ms ease;
+      width:100%;
+      max-width:980px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:16px;
     }
     .game-wrapper.show{ opacity:1; }
 
+    .game-main{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+    }
+
+    .game-side{
+      width:100%;
+      max-width:520px;
+    }
+
+    @media (min-width: 900px){
+      .game-wrapper{
+        flex-direction:row;
+        align-items:flex-start;
+        justify-content:center;
+        gap:24px;
+      }
+      .game-main{
+        max-width:380px;
+      }
+      .game-side{
+        max-width:320px;
+        margin-top:32px;
+      }
+    }
+
     /* SCOREBOARD */
     .scoreboard{
-      width:min(96vw, 520px);
-      margin-top:12px;
+      width:100%;
       background:#141722;
       border:1px solid #262a36;
       border-radius:12px;
@@ -252,7 +286,7 @@
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width:120px;
+      max-width:150px;
     }
     .scoreboard th{
       color:var(--muted);
@@ -287,40 +321,45 @@
   </div>
 
   <div id="gameWrapper" class="game-wrapper">
-    <h1>WORDLE</h1>
-    <div class="sub">Guess the 5 letter word. You have 6 tries.</div>
+    <!-- LEFT: MAIN GAME -->
+    <div class="game-main">
+      <h1>WORDLE</h1>
+      <div class="sub">Guess the 5 letter word. You have 6 tries.</div>
 
-    <div id="board" class="board"></div>
-    <div id="status" class="status"></div>
+      <div id="board" class="board"></div>
+      <div id="status" class="status"></div>
 
-    <!-- AUTH PANEL -->
-    <div class="auth-panel" id="authBox">
-      <input id="emailInput" type="email" placeholder="Email" />
-      <input id="passwordInput" type="password" placeholder="Password" />
-      <button id="loginBtn" class="auth-btn">
-        <span class="btn-text">Login</span>
-        <span class="spinner" aria-hidden="true"></span>
-      </button>
-      <button id="logoutBtn" style="display:none;">Logout</button>
-    </div>
-    <div class="auth-note">
-      <span>Login is optional. If you login, your results are saved.</span>
-      <button id="toggleModeBtn">Need an account? Create one</button>
-    </div>
-
-    <!-- SCOREBOARD -->
-    <div id="scoreboard" class="scoreboard">
-      <div class="scoreboard-header">
-        <div class="scoreboard-title">This Week's Scores</div>
-        <div id="scoreboardWeekLabel" class="scoreboard-week"></div>
+      <!-- AUTH PANEL -->
+      <div class="auth-panel" id="authBox">
+        <input id="emailInput" type="email" placeholder="Email" />
+        <input id="passwordInput" type="password" placeholder="Password" />
+        <button id="loginBtn" class="auth-btn">
+          <span class="btn-text">Login</span>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+        <button id="logoutBtn" style="display:none;">Logout</button>
       </div>
-      <div id="scoreboardContent" class="scoreboard-content score-empty">
-        Loading scoreboard...
+      <div class="auth-note">
+        <span>Login is optional. If you login, your results are saved.</span>
+        <button id="toggleModeBtn">Need an account? Create one</button>
       </div>
+
+      <div id="keyboard" class="keyboard"></div>
+      <div class="footer">Physical keyboard supported.</div>
     </div>
 
-    <div id="keyboard" class="keyboard"></div>
-    <div class="footer">Physical keyboard supported.</div>
+    <!-- RIGHT: SCOREBOARD -->
+    <div class="game-side">
+      <div id="scoreboard" class="scoreboard">
+        <div class="scoreboard-header">
+          <div class="scoreboard-title">This Week's Scores</div>
+          <div id="scoreboardWeekLabel" class="scoreboard-week"></div>
+        </div>
+        <div id="scoreboardContent" class="scoreboard-content score-empty">
+          Loading scoreboard...
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Supabase client -->
@@ -391,16 +430,29 @@
       if(!supabase) return;
       const { data:{ user } } = await supabase.auth.getUser();
       if(user){
+        if (emailInput) {
+          emailInput.style.display = "inline-block";
+          emailInput.value = user.email || "";
+          emailInput.disabled = true;
+        }
+        if (passwordInput) {
+          passwordInput.style.display = "none";
+          passwordInput.value = "";
+        }
         if (loginBtn) loginBtn.style.display = "none";
-        if (emailInput) emailInput.style.display = "inline-block"; // keep visible but disabled if you want
-        if (passwordInput) passwordInput.style.display = "none";
         if (logoutBtn) logoutBtn.style.display = "inline-block";
         if (toggleModeBtn) toggleModeBtn.style.display = "none";
         setStatus("Logged in as " + user.email);
       } else {
+        if (emailInput) {
+          emailInput.style.display = "inline-block";
+          emailInput.disabled = false;
+        }
+        if (passwordInput) {
+          passwordInput.style.display = "inline-block";
+          passwordInput.value = "";
+        }
         if (loginBtn) loginBtn.style.display = "inline-flex";
-        if (emailInput) emailInput.style.display = "inline-block";
-        if (passwordInput) passwordInput.style.display = "inline-block";
         if (logoutBtn) logoutBtn.style.display = "none";
         if (toggleModeBtn) toggleModeBtn.style.display = "inline-block";
       }
@@ -450,7 +502,7 @@
             const { data, error } = await supabase.auth.signUp({
               email,
               password
-              // If you want email confirmation redirect:
+              // If you use email confirmation with redirect:
               // options: { emailRedirectTo: "https://chrisvp5.github.io/VPwordle/" }
             });
 
@@ -512,9 +564,7 @@
             loginBtn.style.display = "inline-flex";
           }
           if (emailInput) {
-            emailInput.style.display = "inline-block";
-            // keep the email if you want, or clear:
-            // emailInput.value = "";
+            emailInput.disabled = false;
           }
           if (passwordInput) {
             passwordInput.style.display = "inline-block";
@@ -553,7 +603,7 @@
     }
     const getPuzzleId = () => getDailyIndex();
 
-    // Monday-based week, using UTC day (0 = Mon .. 6 = Sun)
+    // Monday-based week in UTC
     function getWeekInfo(){
       const todayId = getDailyIndex();
       const now = new Date();
@@ -565,7 +615,6 @@
         weekIds.push(todayId - mondayIndex + offset);
       }
 
-      // Build week label dates (for display)
       const todayUTC = new Date(Date.UTC(
         now.getUTCFullYear(),
         now.getUTCMonth(),
@@ -587,7 +636,6 @@
 
       const { weekIds, mondayDate, sundayDate } = getWeekInfo();
 
-      // Set week label (e.g., 3–9 Mar)
       if (scoreboardWeekLabel) {
         const fmt = (d) =>
           d.getUTCDate().toString().padStart(2,"0") + "/" +
@@ -596,6 +644,7 @@
       }
 
       scoreboardContent.textContent = "Loading scoreboard...";
+      scoreboardContent.className = "scoreboard-content score-empty";
 
       const { data, error } = await supabase
         .from("vpwordle_results")
@@ -611,11 +660,9 @@
 
       if (!data || !data.length) {
         scoreboardContent.textContent = "No games played this week yet.";
-        scoreboardContent.className = "scoreboard-content score-empty";
         return;
       }
 
-      // Build user -> [7-day scores]
       const byUser = {};
       data.forEach(row => {
         const email = row.user_email || row.user_id || "Unknown";
@@ -631,7 +678,6 @@
         const val = row.won ? row.guesses_used : "X";
         const existing = byUser[email].scores[dayIndex];
 
-        // If multiple entries for same day, keep the best (lowest guesses or a win over "X")
         if (existing == null) {
           byUser[email].scores[dayIndex] = val;
         } else if (typeof val === "number" && (typeof existing !== "number" || val < existing)) {
@@ -642,11 +688,9 @@
       const users = Object.values(byUser);
       if (!users.length) {
         scoreboardContent.textContent = "No games played this week yet.";
-        scoreboardContent.className = "scoreboard-content score-empty";
         return;
       }
 
-      // Build table
       const table = document.createElement("table");
       const thead = document.createElement("thead");
       const headerRow = document.createElement("tr");
@@ -877,14 +921,12 @@
       const a=answer.split("");
       const g=guess.split("");
 
-      // greens
       for(let i=0;i<5;i++){
         if(g[i]===a[i]){
           result[i]="green";
           a[i]=null; g[i]=null;
         }
       }
-      // yellows
       for(let i=0;i<5;i++){
         if(g[i] && a.includes(g[i])){
           result[i]="yellow";
@@ -998,7 +1040,6 @@
       }
     }
 
-    // Boot: auth UI, game, and scoreboard, then hide loader
     window.addEventListener("DOMContentLoaded", async () => {
       try{
         await refreshAuthUI();
