@@ -283,10 +283,9 @@
       text-align:left;
       padding-left:4px;
       font-weight:600;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:150px;
+      white-space:normal;
+      overflow-wrap:anywhere;
+      max-width:200px;
     }
     .scoreboard th{
       color:var(--muted);
@@ -685,7 +684,17 @@
         }
       });
 
-      const users = Object.values(byUser);
+      const displayName = (email) => {
+        if (!email) return "Unknown";
+        const normalized = String(email);
+        const atIndex = normalized.indexOf("@");
+        return atIndex > 0 ? normalized.slice(0, atIndex) : normalized;
+      };
+
+      const users = Object.values(byUser).map(user => ({
+        ...user,
+        displayName: displayName(user.email)
+      }));
       if (!users.length) {
         scoreboardContent.textContent = "No games played this week yet.";
         return;
@@ -711,7 +720,7 @@
       users.forEach(u => {
         const tr = document.createElement("tr");
         const nameCell = document.createElement("td");
-        nameCell.textContent = u.email;
+        nameCell.textContent = u.displayName;
         tr.appendChild(nameCell);
 
         u.scores.forEach(val => {
