@@ -47,6 +47,30 @@
     .tile.green{ background:var(--green); border-color:var(--green); color:#0b0d12; }
     .tile.yellow{ background:var(--yellow); border-color:var(--yellow); color:#0b0d12; }
     .tile.grey{ background:var(--grey); border-color:var(--grey); color:#e5e7eb; }
+    .tile.reveal{
+      animation: flipReveal 0.72s ease;
+      transform-style: preserve-3d;
+      backface-visibility:hidden;
+      transform-origin:center;
+    }
+
+    @keyframes flipReveal{
+      0%{ transform: rotateX(0); }
+      50%{ transform: rotateX(-90deg); }
+      100%{ transform: rotateX(0); }
+    }
+
+    /* Fireworks overlay */
+    #fireworksCanvas{
+      position:fixed;
+      inset:0;
+      width:100%; height:100%;
+      pointer-events:none;
+      z-index:2000;
+      mix-blend-mode:screen;
+      opacity:0;
+      transition: opacity .4s ease;
+    }
 
     .status{ min-height:22px; font-size:15px; color:var(--muted); text-align:center; margin-top:2px; }
 
@@ -222,6 +246,9 @@
     .game-side{
       width:100%;
       max-width:520px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
     }
 
     @media (min-width: 900px){
@@ -283,10 +310,9 @@
       text-align:left;
       padding-left:4px;
       font-weight:600;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width:150px;
+      white-space:normal;
+      overflow-wrap:anywhere;
+      max-width:200px;
     }
     .scoreboard th{
       color:var(--muted);
@@ -300,6 +326,71 @@
       font-size:11px;
       color:var(--muted);
       padding:4px 0 2px;
+    }
+
+    /* HISTORY */
+    .history{
+      width:100%;
+      background:#141722;
+      border:1px solid #262a36;
+      border-radius:12px;
+      padding:10px 10px 8px;
+      font-size:12px;
+    }
+    .history-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:6px;
+      color:var(--muted);
+      gap:8px;
+    }
+    .history-title{
+      font-weight:700;
+      font-size:13px;
+      letter-spacing:0.5px;
+      text-transform:uppercase;
+    }
+    .history-week{ font-size:11px; opacity:0.8; }
+    .history-body{ display:flex; flex-direction:column; gap:6px; }
+    .history-empty{ color:var(--muted); text-align:center; padding:4px 2px; }
+    .history-item{
+      background:#0f1118;
+      border:1px solid #202533;
+      border-radius:10px;
+      padding:8px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      justify-content:space-between;
+    }
+    .history-item-info{ display:flex; flex-direction:column; gap:2px; }
+    .history-item-title{ font-weight:700; letter-spacing:0.3px; }
+    .history-item-sub{ color:var(--muted); font-size:11px; }
+    .history-status{
+      padding:6px 10px;
+      border-radius:8px;
+      font-weight:700;
+      border:1px solid #333845;
+      background:#1f2430;
+      cursor:pointer;
+      color:var(--text);
+      transition:filter .12s ease, transform .05s ease, opacity .15s ease;
+    }
+    .history-status:active{ transform:translateY(1px); }
+    .history-status:hover{ filter:brightness(1.08); }
+    .history-status.locked{
+      cursor:not-allowed;
+      opacity:0.55;
+    }
+    .history-status.played{ background:#1b2520; border-color:#2fbf71; color:#bff4d5; }
+    .history-status.inprogress{ background:#24202b; border-color:#a98bff; color:#e3d9ff; }
+
+    .puzzle-label{
+      font-size:14px;
+      color:var(--muted);
+      margin-top:4px;
+      text-align:center;
     }
   </style>
 </head>
@@ -325,6 +416,8 @@
     <div class="game-main">
       <h1>WORDLE</h1>
       <div class="sub">Guess the 5 letter word. You have 6 tries.</div>
+
+      <div id="puzzleLabel" class="puzzle-label"></div>
 
       <div id="board" class="board"></div>
       <div id="status" class="status"></div>
@@ -357,6 +450,16 @@
         </div>
         <div id="scoreboardContent" class="scoreboard-content score-empty">
           Loading scoreboard...
+        </div>
+      </div>
+
+      <div id="history" class="history">
+        <div class="history-header">
+          <div class="history-title">This Week's Puzzles</div>
+          <div id="historyWeekLabel" class="history-week"></div>
+        </div>
+        <div id="historyBody" class="history-body history-empty">
+          Login to view and replay this week's puzzles.
         </div>
       </div>
     </div>
@@ -410,6 +513,9 @@
 
     const scoreboardContent = document.getElementById("scoreboardContent");
     const scoreboardWeekLabel = document.getElementById("scoreboardWeekLabel");
+    const puzzleLabel = document.getElementById("puzzleLabel");
+    const historyWeekLabel = document.getElementById("historyWeekLabel");
+    const historyBody = document.getElementById("historyBody");
 
     // "login" or "signup"
     let authMode = "login";
@@ -591,17 +697,26 @@
       supabase.auth.onAuthStateChange(() => {
         refreshAuthUI();
         loadScoreboard();
+        loadHistoryPanel();
       });
     }
 
     // -------------------- PUZZLE ID HELPERS --------------------
+    const PUZZLE_START = new Date("2021-06-19T00:00:00Z");
+    let activePuzzleId = getDailyIndex();
+
     function getDailyIndex(){
-      const start = new Date("2021-06-19T00:00:00Z");
       const now = new Date();
       const utcToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      return Math.floor((utcToday - start) / (1000*60*60*24));
+      return Math.floor((utcToday - PUZZLE_START) / (1000*60*60*24));
     }
-    const getPuzzleId = () => getDailyIndex();
+    const getPuzzleId = () => activePuzzleId;
+
+    function puzzleIdToDate(puzzleId){
+      const date = new Date(PUZZLE_START);
+      date.setUTCDate(date.getUTCDate() + puzzleId);
+      return date;
+    }
 
     // Monday-based week in UTC
     function getWeekInfo(){
@@ -630,6 +745,21 @@
 
     const WEEKDAY_LABELS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
+    const formatWeekLabel = (mondayDate, sundayDate) => {
+      const fmt = (d) =>
+        d.getUTCDate().toString().padStart(2,"0") + "/" +
+        (d.getUTCMonth()+1).toString().padStart(2,"0");
+      return `${fmt(mondayDate)} – ${fmt(sundayDate)}`;
+    };
+
+    function updatePuzzleLabel(){
+      if(!puzzleLabel) return;
+      const date = puzzleIdToDate(getPuzzleId());
+      const weekdayIndex = (date.getUTCDay() + 6) % 7;
+      const dateLabel = `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')}`;
+      puzzleLabel.textContent = `Playing: ${WEEKDAY_LABELS[weekdayIndex]} (${dateLabel})`;
+    }
+
     // -------------------- SCOREBOARD --------------------
     async function loadScoreboard(){
       if (!supabase || !scoreboardContent) return;
@@ -637,10 +767,7 @@
       const { weekIds, mondayDate, sundayDate } = getWeekInfo();
 
       if (scoreboardWeekLabel) {
-        const fmt = (d) =>
-          d.getUTCDate().toString().padStart(2,"0") + "/" +
-          (d.getUTCMonth()+1).toString().padStart(2,"0");
-        scoreboardWeekLabel.textContent = `${fmt(mondayDate)} – ${fmt(sundayDate)}`;
+        scoreboardWeekLabel.textContent = formatWeekLabel(mondayDate, sundayDate);
       }
 
       scoreboardContent.textContent = "Loading scoreboard...";
@@ -685,7 +812,17 @@
         }
       });
 
-      const users = Object.values(byUser);
+      const displayName = (email) => {
+        if (!email) return "Unknown";
+        const normalized = String(email);
+        const atIndex = normalized.indexOf("@");
+        return atIndex > 0 ? normalized.slice(0, atIndex) : normalized;
+      };
+
+      const users = Object.values(byUser).map(user => ({
+        ...user,
+        displayName: displayName(user.email)
+      }));
       if (!users.length) {
         scoreboardContent.textContent = "No games played this week yet.";
         return;
@@ -711,7 +848,7 @@
       users.forEach(u => {
         const tr = document.createElement("tr");
         const nameCell = document.createElement("td");
-        nameCell.textContent = u.email;
+        nameCell.textContent = u.displayName;
         tr.appendChild(nameCell);
 
         u.scores.forEach(val => {
@@ -733,6 +870,107 @@
       scoreboardContent.appendChild(table);
     }
 
+    async function loadHistoryPanel(){
+      if (!historyBody) return;
+
+      const { weekIds, mondayDate, sundayDate } = getWeekInfo();
+      if (historyWeekLabel) {
+        historyWeekLabel.textContent = formatWeekLabel(mondayDate, sundayDate);
+      }
+
+      if (!supabase) {
+        historyBody.className = "history-body history-empty";
+        historyBody.textContent = "Login to view and replay this week's puzzles.";
+        return;
+      }
+
+      const { data:{ user } } = await supabase.auth.getUser();
+      if(!user){
+        historyBody.className = "history-body history-empty";
+        historyBody.textContent = "Login to view and replay this week's puzzles.";
+        return;
+      }
+
+      historyBody.className = "history-body";
+      historyBody.textContent = "Loading...";
+
+      const { data, error } = await supabase
+        .from("vpwordle_results")
+        .select("puzzle_id, guesses_used, won")
+        .eq("user_id", user.id)
+        .in("puzzle_id", weekIds);
+
+      if (error) {
+        console.error("History load error", error);
+        historyBody.className = "history-body history-empty";
+        historyBody.textContent = "Could not load history.";
+        return;
+      }
+
+      const stateStore = readStateStore();
+      historyBody.innerHTML = "";
+
+      weekIds.forEach((pid, idx) => {
+        const date = puzzleIdToDate(pid);
+        const weekdayLabel = WEEKDAY_LABELS[idx];
+        const result = (data || []).find(r => r.puzzle_id === pid);
+        const localState = stateStore[pid];
+
+        const item = document.createElement("div");
+        item.className = "history-item";
+
+        const info = document.createElement("div");
+        info.className = "history-item-info";
+        const title = document.createElement("div");
+        const dateLabel = `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,"0")}-${String(date.getUTCDate()).padStart(2,"0")}`;
+        title.className = "history-item-title";
+        title.textContent = `${weekdayLabel} (${dateLabel})`;
+        const sub = document.createElement("div");
+        sub.className = "history-item-sub";
+
+        const hasProgress = localState && (
+          (localState.currentRow || 0) > 0 ||
+          (localState.guesses || []).some(row => Array.isArray(row) && row.some(ch => !!ch))
+        );
+
+        let statusText = "Not played yet";
+        if(result){
+          statusText = result.won ? `Won in ${result.guesses_used}` : `Failed in ${result.guesses_used}`;
+        } else if(localState){
+          statusText = localState.isGameOver ? "Finished locally" : (hasProgress ? `In progress (${localState.currentRow || 0}/6)` : "Not played yet");
+        }
+        sub.textContent = statusText;
+
+        info.appendChild(title);
+        info.appendChild(sub);
+
+        const action = document.createElement("button");
+        action.className = "history-status";
+        let actionLabel = "Play";
+        if(localState && !localState.isGameOver && hasProgress) {
+          action.classList.add("inprogress");
+          actionLabel = "Resume";
+        } else if (result || (localState && localState.isGameOver)) {
+          action.classList.add("played");
+          actionLabel = "Replay";
+        }
+        action.textContent = actionLabel;
+        action.onclick = () => {
+          setActivePuzzle(pid);
+          setStatus(`Loaded ${weekdayLabel}'s puzzle.`, true);
+        };
+
+        item.appendChild(info);
+        item.appendChild(action);
+        historyBody.appendChild(item);
+      });
+
+      if(!weekIds.length){
+        historyBody.className = "history-body history-empty";
+        historyBody.textContent = "No puzzles found for this week.";
+      }
+    }
+
     async function saveResultToSupabase({ puzzleId, guessesUsed, won }){
       if(!supabase) return;
       const { data:{ user } } = await supabase.auth.getUser();
@@ -747,10 +985,12 @@
       });
 
       await loadScoreboard();
+      await loadHistoryPanel();
     }
 
     // -------------------- PRIVATE GAME DATA --------------------
     let solutions = [];
+    let shuffledSolutions = [];
     let validGuesses = new Set();
     let _answer = "";           // private in closure
     const setAnswer = (w) => { _answer = w; };
@@ -761,10 +1001,44 @@
     let currentRow = 0;
     let currentCol = 0;
     let isGameOver = false;
+    let isAnimating = false;
     const guesses = Array.from({length:6}, ()=>Array(5).fill(""));
     const keyState = {}; // unknown | grey | yellow | green
 
+    // Fireworks state
+    let fireworksCanvas = null;
+    let fireworksCtx = null;
+    let fireworksFrame = null;
+
     // -------------------- WORD LISTS --------------------
+    function hashString(str){
+      let hash = 2166136261 >>> 0;
+      for(let i=0;i<str.length;i++){
+        hash ^= str.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    }
+
+    function mulberry32(a){
+      return function(){
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function shuffleDeterministic(list, seedStr){
+      const rng = mulberry32(hashString(seedStr));
+      const arr = [...list];
+      for(let i = arr.length - 1; i > 0; i--){
+        const j = Math.floor(rng() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
     async function loadWordLists(){
       try{
         const base = window.location.href;
@@ -788,6 +1062,7 @@
         const guessesArr = guessText.split(/\r?\n/).map(w=>w.trim().toLowerCase()).filter(w=>w.length===5);
 
         validGuesses = new Set([...solutions, ...guessesArr]);
+        shuffledSolutions = shuffleDeterministic(solutions, solutions.join(","));
 
         if(!solutions.length || !validGuesses.size){
           throw new Error("Word lists loaded empty.");
@@ -796,31 +1071,62 @@
         console.error("Word list load failed:", err);
         solutions = ["crane","plane","stare","trace","slate","charm","flint","pride","sugar","storm"];
         validGuesses = new Set(solutions);
+        shuffledSolutions = shuffleDeterministic(solutions, "vp-fallback");
         setStatus("Could not load word lists, using fallback list.", true);
       }
     }
 
-    function pickAnswer(){
-      const idx = getDailyIndex() % solutions.length;
-      setAnswer(solutions[idx]);
+    function answerForPuzzleId(puzzleId){
+      if(!shuffledSolutions.length) shuffledSolutions = [...solutions];
+      if(!shuffledSolutions.length) return "";
+      const idx = ((puzzleId % shuffledSolutions.length) + shuffledSolutions.length) % shuffledSolutions.length;
+      return shuffledSolutions[idx];
     }
 
     // -------------------- LOCAL SAVE / RESTORE --------------------
-    function saveState(){
-      localStorage.setItem("vpwordle_state", JSON.stringify({
-        puzzleId:getPuzzleId(), guesses, currentRow, currentCol, isGameOver, keyState
-      }));
+    function readStateStore(){
+      const raw = localStorage.getItem("vpwordle_states");
+      if(!raw) return {};
+      try{
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch {
+        return {};
+      }
     }
 
-    function loadState(){
-      const raw = localStorage.getItem("vpwordle_state");
-      if(!raw) return false;
+    function writeStateStore(store){
+      localStorage.setItem("vpwordle_states", JSON.stringify(store));
+    }
+
+    function migrateLegacyState(){
+      const legacyRaw = localStorage.getItem("vpwordle_state");
+      if(!legacyRaw) return;
       try{
-        const state = JSON.parse(raw);
-        if(state.puzzleId !== getPuzzleId()){
-          localStorage.removeItem("vpwordle_state");
-          return false;
+        const legacy = JSON.parse(legacyRaw);
+        if(!legacy || typeof legacy !== "object" || typeof legacy.puzzleId !== "number") return;
+        const store = readStateStore();
+        if(!store[legacy.puzzleId]){
+          store[legacy.puzzleId] = legacy;
+          writeStateStore(store);
         }
+      } finally {
+        localStorage.removeItem("vpwordle_state");
+      }
+    }
+
+    function saveState(){
+      const store = readStateStore();
+      store[getPuzzleId()] = { puzzleId:getPuzzleId(), guesses, currentRow, currentCol, isGameOver, keyState };
+      writeStateStore(store);
+      localStorage.setItem("vpwordle_lastPuzzle", String(getPuzzleId()));
+    }
+
+    function loadState(forPuzzleId){
+      const store = readStateStore();
+      const state = store[forPuzzleId];
+      if(!state) return false;
+      try{
         for(let r=0;r<6;r++){
           for(let c=0;c<5;c++){
             guesses[r][c] = state.guesses?.[r]?.[c] || "";
@@ -889,11 +1195,199 @@
       }
     }
 
-    function paintRow(r,colours){
-      for(let c=0;c<5;c++){
-        const tile = document.getElementById(`tile-${r}-${c}`);
-        if(tile) tile.classList.add(colours[c]);
+    function paintRow(r,colours, animate=true){
+      if(!animate){
+        for(let c=0;c<5;c++){
+          const tile = document.getElementById(`tile-${r}-${c}`);
+          if(tile){
+            tile.classList.remove("green","yellow","grey","reveal");
+            tile.classList.add(colours[c]);
+          }
+          upgradeKeyState(guesses[r][c], colours[c]);
+        }
+        return Promise.resolve();
       }
+
+      const stagger = 220;
+      const flipDuration = 720;
+
+      return new Promise(resolve => {
+        let finished = 0;
+
+        for(let c=0;c<5;c++){
+          const tile = document.getElementById(`tile-${r}-${c}`);
+          if(!tile){
+            finished++;
+            if(finished===5) resolve();
+            continue;
+          }
+
+          tile.classList.remove("green","yellow","grey","reveal");
+          const delay = c * stagger;
+          let applied = false;
+
+          const applyColour = () => {
+            if(applied) return;
+            applied = true;
+            tile.classList.add(colours[c]);
+            upgradeKeyState(guesses[r][c], colours[c]);
+          };
+
+          setTimeout(() => {
+            tile.classList.add("reveal");
+            setTimeout(applyColour, flipDuration * 0.55);
+          }, delay);
+
+          tile.addEventListener("animationend", function handler(){
+            tile.classList.remove("reveal");
+            applyColour();
+            finished++;
+            tile.removeEventListener("animationend", handler);
+            if(finished===5) resolve();
+          });
+        }
+
+        setTimeout(()=>{ if(finished<5) resolve(); }, stagger*4 + flipDuration + 80);
+      });
+    }
+
+    function clearBoardUI(){
+      if(!boardEl) return;
+      document.querySelectorAll(".tile").forEach(tile => {
+        tile.textContent = "";
+        tile.classList.remove("green","yellow","grey","reveal","pop");
+      });
+    }
+
+    function refreshBoardFromState(){
+      clearBoardUI();
+      for(let r=0;r<6;r++){
+        for(let c=0;c<5;c++){
+          const tile = document.getElementById(`tile-${r}-${c}`);
+          if(!tile) continue;
+          tile.textContent = guesses[r][c];
+        }
+      }
+
+      for(let r=0;r<6;r++){
+        const guessStr = guesses[r].join("");
+        if(!guessStr) continue;
+        if(r < currentRow || isGameOver){
+          const colours = scoreGuess(guessStr);
+          paintRow(r, colours, false);
+        }
+      }
+
+      repaintKeyboard();
+    }
+
+    function setActivePuzzle(puzzleId){
+      activePuzzleId = puzzleId;
+      setAnswer(answerForPuzzleId(puzzleId));
+      localStorage.setItem("vpwordle_lastPuzzle", String(puzzleId));
+
+      guesses.forEach(r=>r.fill(""));
+      currentRow = 0;
+      currentCol = 0;
+      isGameOver = false;
+      isAnimating = false;
+      for(const k in keyState) delete keyState[k];
+
+      const restored = loadState(puzzleId);
+      refreshBoardFromState();
+
+      if(restored){
+        if(isGameOver){
+          const lastGuess = guesses[Math.max(0, currentRow-1)]?.join("") || "";
+          if(lastGuess && lastGuess === _answer){
+            setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
+          } else {
+            setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
+          }
+        } else {
+          setStatus("Continue guessing.");
+        }
+      } else {
+        setStatus("");
+      }
+
+      updatePuzzleLabel();
+    }
+
+    function ensureFireworksCanvas(){
+      if(fireworksCanvas) return;
+      fireworksCanvas = document.createElement("canvas");
+      fireworksCanvas.id = "fireworksCanvas";
+      document.body.appendChild(fireworksCanvas);
+      fireworksCtx = fireworksCanvas.getContext("2d");
+      const resize = () => {
+        fireworksCanvas.width = window.innerWidth;
+        fireworksCanvas.height = window.innerHeight;
+      };
+      resize();
+      window.addEventListener("resize", resize);
+    }
+
+    function launchFireworks(){
+      ensureFireworksCanvas();
+      if(!fireworksCtx || !fireworksCanvas) return;
+      if(fireworksFrame) cancelAnimationFrame(fireworksFrame);
+
+      fireworksCanvas.style.display = "block";
+      fireworksCanvas.style.opacity = "1";
+
+      const particles = [];
+      const bursts = 12;
+      for(let b=0;b<bursts;b++){
+        const originX = Math.random() * fireworksCanvas.width;
+        const originY = Math.random() * fireworksCanvas.height * 0.6;
+        const count = 38;
+        const hue = Math.random() * 360;
+        for(let i=0;i<count;i++){
+          const angle = (Math.PI*2*i)/count;
+          const speed = 2 + Math.random()*4;
+          particles.push({
+            x: originX,
+            y: originY,
+            vx: Math.cos(angle)*speed,
+            vy: Math.sin(angle)*speed,
+            life: 0,
+            maxLife: 70 + Math.random()*35,
+            hue: hue + (Math.random()*40 - 20)
+          });
+        }
+      }
+
+      const gravity = 0.04;
+      const start = performance.now();
+      const duration = 3200;
+
+      const step = (now) => {
+        const elapsed = now - start;
+        fireworksCtx.clearRect(0,0,fireworksCanvas.width,fireworksCanvas.height);
+
+        particles.forEach(p => {
+          p.life++;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += gravity;
+          const alpha = Math.max(0, 1 - (p.life / p.maxLife));
+          fireworksCtx.fillStyle = `hsla(${p.hue}, 90%, 65%, ${alpha})`;
+          fireworksCtx.beginPath();
+          fireworksCtx.arc(p.x, p.y, 2.4, 0, Math.PI*2);
+          fireworksCtx.fill();
+        });
+
+        if(elapsed < duration){
+          fireworksFrame = requestAnimationFrame(step);
+        } else {
+          fireworksCanvas.style.opacity = "0";
+          fireworksFrame = requestAnimationFrame(()=>fireworksCtx.clearRect(0,0,fireworksCanvas.width,fireworksCanvas.height));
+          setTimeout(()=>{ fireworksCanvas.style.display = "none"; }, 420);
+        }
+      };
+
+      fireworksFrame = requestAnimationFrame(step);
     }
 
     function upgradeKeyState(letter,newState){
@@ -937,24 +1431,25 @@
     }
 
     // -------------------- INPUT --------------------
-    function handleKey(key){
-      if(isGameOver) return;
+    async function handleKey(key){
+      if(isGameOver || isAnimating) return;
 
       if(key==="enter"){
         const guess=guesses[currentRow].join("");
         if(guess.length<5) return setStatus("Not enough letters.");
         if(!validGuesses.has(guess)) return setStatus("Not in word list.");
 
+        isAnimating = true;
         const colours=scoreGuess(guess);
-        paintRow(currentRow,colours);
-
-        for(let i=0;i<5;i++) upgradeKeyState(guess[i], colours[i]);
+        await paintRow(currentRow,colours,true);
         repaintKeyboard();
         saveState();
 
         if(guess===_answer){
           isGameOver=true; saveState();
           saveResultToSupabase({ puzzleId:getPuzzleId(), guessesUsed:currentRow+1, won:true });
+          launchFireworks();
+          isAnimating = false;
           return setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
         }
 
@@ -963,10 +1458,12 @@
         if(currentRow===6){
           isGameOver=true; saveState();
           saveResultToSupabase({ puzzleId:getPuzzleId(), guessesUsed:6, won:false });
+          isAnimating = false;
           return setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
         }
 
         setStatus("");
+        isAnimating = false;
         return;
       }
 
@@ -1001,43 +1498,15 @@
       setStatus("Loading word lists...");
       await loadWordLists();
 
-      pickAnswer();
+      migrateLegacyState();
       buildBoard();
       buildKeyboard();
 
-      const restored=loadState();
+      const { weekIds } = getWeekInfo();
+      const last = Number(localStorage.getItem("vpwordle_lastPuzzle"));
+      const initialPuzzle = Number.isInteger(last) && weekIds.includes(last) ? last : getDailyIndex();
 
-      if(restored){
-        for(let r=0;r<6;r++){
-          const guessStr=guesses[r].join("");
-          if(!guessStr) continue;
-
-          for(let c=0;c<5;c++) updateTile(r,c,guesses[r][c]);
-
-          if(r<currentRow){
-            const colours=scoreGuess(guessStr);
-            paintRow(r,colours);
-          }
-        }
-        repaintKeyboard();
-
-        if(isGameOver){
-          const lastGuess=guesses[currentRow-1]?.join("")||"";
-          if(lastGuess===_answer){
-            setStatus(`You got it. The word was ${_answer.toUpperCase()}.`, true);
-          } else {
-            setStatus(`Out of guesses. The word was ${_answer.toUpperCase()}.`, true);
-          }
-        } else {
-          setStatus("");
-        }
-      } else {
-        guesses.forEach(r=>r.fill(""));
-        currentRow=0; currentCol=0; isGameOver=false;
-        for(const k in keyState) delete keyState[k];
-        saveState();
-        setStatus("");
-      }
+      setActivePuzzle(initialPuzzle);
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
@@ -1046,6 +1515,9 @@
         await startGame();
         if (supabase) {
           await loadScoreboard();
+          await loadHistoryPanel();
+        } else {
+          await loadHistoryPanel();
         }
       } catch(e){
         console.error("Boot error:", e);
