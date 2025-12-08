@@ -385,6 +385,11 @@
     }
     .history-status.played{ background:#1b2520; border-color:#2fbf71; color:#bff4d5; }
     .history-status.inprogress{ background:#24202b; border-color:#a98bff; color:#e3d9ff; }
+    .history-note{
+      margin-top:6px;
+      font-size:12px;
+      color:var(--muted);
+    }
 
     .puzzle-label{
       font-size:14px;
@@ -878,42 +883,42 @@
         historyWeekLabel.textContent = formatWeekLabel(mondayDate, sundayDate);
       }
 
-      if (!supabase) {
-        historyBody.className = "history-body history-empty";
-        historyBody.textContent = "Login to view and replay this week's puzzles.";
-        return;
-      }
-
-      const { data:{ user } } = await supabase.auth.getUser();
-      if(!user){
-        historyBody.className = "history-body history-empty";
-        historyBody.textContent = "Login to view and replay this week's puzzles.";
-        return;
-      }
-
       historyBody.className = "history-body";
       historyBody.textContent = "Loading...";
 
-      const { data, error } = await supabase
-        .from("vpwordle_results")
-        .select("puzzle_id, guesses_used, won")
-        .eq("user_id", user.id)
-        .in("puzzle_id", weekIds);
+      const stateStore = readStateStore();
+      let results = [];
+      let authedUser = null;
 
-      if (error) {
-        console.error("History load error", error);
-        historyBody.className = "history-body history-empty";
-        historyBody.textContent = "Could not load history.";
-        return;
+      if (supabase) {
+        try {
+          const { data:{ user } } = await supabase.auth.getUser();
+          authedUser = user;
+
+          if (user) {
+            const { data, error } = await supabase
+              .from("vpwordle_results")
+              .select("puzzle_id, guesses_used, won")
+              .eq("user_id", user.id)
+              .in("puzzle_id", weekIds);
+
+            if (error) {
+              console.error("History load error", error);
+            } else {
+              results = data || [];
+            }
+          }
+        } catch (err) {
+          console.error("History auth error", err);
+        }
       }
 
-      const stateStore = readStateStore();
       historyBody.innerHTML = "";
 
       weekIds.forEach((pid, idx) => {
         const date = puzzleIdToDate(pid);
         const weekdayLabel = WEEKDAY_LABELS[idx];
-        const result = (data || []).find(r => r.puzzle_id === pid);
+        const result = results.find(r => r.puzzle_id === pid);
         const localState = stateStore[pid];
 
         const item = document.createElement("div");
@@ -939,6 +944,11 @@
         } else if(localState){
           statusText = localState.isGameOver ? "Finished locally" : (hasProgress ? `In progress (${localState.currentRow || 0}/6)` : "Not played yet");
         }
+
+        if (!authedUser && !result && localState?.isGameOver) {
+          statusText += " (not saved)";
+        }
+
         sub.textContent = statusText;
 
         info.appendChild(title);
@@ -946,13 +956,13 @@
 
         const action = document.createElement("button");
         action.className = "history-status";
-        let actionLabel = "Play";
+        let actionLabel = authedUser ? "Play" : "Play locally";
         if(localState && !localState.isGameOver && hasProgress) {
           action.classList.add("inprogress");
-          actionLabel = "Resume";
+          actionLabel = authedUser ? "Resume" : "Resume locally";
         } else if (result || (localState && localState.isGameOver)) {
           action.classList.add("played");
-          actionLabel = "Replay";
+          actionLabel = authedUser ? "Replay" : "Replay locally";
         }
         action.textContent = actionLabel;
         action.onclick = () => {
@@ -968,6 +978,11 @@
       if(!weekIds.length){
         historyBody.className = "history-body history-empty";
         historyBody.textContent = "No puzzles found for this week.";
+      } else if (!authedUser && !results.length) {
+        const note = document.createElement("div");
+        note.className = "history-note";
+        note.textContent = "Login to sync results to your account.";
+        historyBody.appendChild(note);
       }
     }
 
